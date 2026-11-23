@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#000000">
 <style>
   html,body{margin:0;padding:0;background:#05070c;overflow:hidden;height:100%;font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
-  #app{position:fixed;left:0;top:0;overflow:hidden;background:#05070c}
+  #app{position:fixed;left:0;top:0;overflow:hidden;background:#05070c;touch-action:none}
   canvas{display:block}
   /* HUD */
   #hud{position:absolute;inset:0;pointer-events:none;color:#e8ecf4}
@@ -27,7 +27,7 @@
   #kills{font-size:13px;color:#ffd257;text-shadow:0 1px 3px #000;white-space:nowrap;padding-top:4px}
   #state{position:absolute;top:calc(52px + env(safe-area-inset-top));left:12px;font-size:11px;letter-spacing:1px;color:#9fb2cc;text-shadow:0 1px 3px #000}
   #state b{color:#fff;font-size:12px}
-  #msg{position:absolute;top:26%;left:0;right:0;text-align:center;font-size:26px;font-weight:800;letter-spacing:3px;color:#fff;text-shadow:0 0 12px rgba(255,60,80,.8),0 2px 6px #000;opacity:0;transition:opacity .12s}
+  #msg{pointer-events:none;position:absolute;top:26%;left:0;right:0;text-align:center;font-size:26px;font-weight:800;letter-spacing:3px;color:#fff;text-shadow:0 0 12px rgba(255,60,80,.8),0 2px 6px #000;opacity:0;transition:opacity .12s}
   #msg.small{font-size:17px;letter-spacing:2px}
   #help{position:absolute;left:0;right:0;bottom:0;padding:0 10px calc(8px + env(safe-area-inset-bottom)) 10px;text-align:center;font-size:11px;line-height:1.7;color:#aeb9cc;text-shadow:0 1px 3px #000}
   #help b{color:#fff}
@@ -74,7 +74,7 @@
   <div id="start" class="overlay">
     <img src="logo.jpg" alt="REDLINE AGENT">
     <div class="starttap">タップではじめる</div>
-    <div class="version">REDLINE AGENT prototype v1.2</div>
+    <div class="version">REDLINE AGENT prototype v1.3</div>
   </div>
   <div id="outfit" class="overlay hidden">
     <div class="otitle">AGENT OUTFIT — 衣装選択</div>
@@ -474,33 +474,32 @@ playerMesh.visible = false; // v1: box figure replaced by the Rei billboard spri
    panels are deliberately NOT used (see BUILD-NOTES v1). */
 var OUTFITS = [
   { name: '英国紳士＋ライフル',       idle: 'assets/rei-outfits/frames/o1-idle.png',
-    walkA: 'assets/rei-outfits/frames/o1-walk-a.png', walkC: 'assets/rei-outfits/frames/o1-walk-c.png',
+    walkA: 'assets/rei-outfits/frames/o1-walk-a.png', walkD: 'assets/rei-outfits/frames/o1-walk-d.png',
     start: 'assets/rei-outfits/frames/o1-start.png', clear: 'assets/rei-outfits/frames/o1-clear.png' },
   { name: 'ダークスーツ＋ワルサーP38', idle: 'assets/rei-outfits/frames/o2-idle.png',
+    walkA: 'assets/rei-outfits/frames/o2-walk-a.png', walkB: 'assets/rei-outfits/frames/o2-walk-b.png',
     start: 'assets/rei-outfits/frames/o2-start.png', clear: 'assets/rei-outfits/frames/o2-clear.png' },
   { name: '海兵隊迷彩＋M40',           idle: 'assets/rei-outfits/frames/o3-idle.png',
     walkA: 'assets/rei-outfits/frames/o3-walk-a.png', walkB: 'assets/rei-outfits/frames/o3-walk-b.png',
     start: 'assets/rei-outfits/frames/o3-start.png', clear: 'assets/rei-outfits/frames/o3-clear.png' },
   { name: '中世の狩人＋弓',             idle: 'assets/rei-outfits/frames/o4-idle.png',
-    walkA: 'assets/rei-outfits/frames/o4-walk-a.png',
+    walkA: 'assets/rei-outfits/frames/o4-walk-a.png', walkB: 'assets/rei-outfits/frames/o4-walk-b.png',
     start: 'assets/rei-outfits/frames/o4-start.png', clear: 'assets/rei-outfits/frames/o4-clear.png' }
 ];
-/* v1.2 walk cycles, built ONLY from the back-view phases the sheets
-   actually contain (audit in BUILD-NOTES v1.2):
-   - outfit 1: standing -> contact (walk-a) -> standing -> passing (walk-c,
-     right leg raised). o1-walk-b was a near-duplicate of walk-a's phase
-     (same leg forward) and is retired from the cycle.
-   - outfit 2: no back-view walk frames exist (its walk panels are side
-     view) -> idle only.
-   - outfit 3: standing -> stride A (walk-a) -> standing -> stride B
-     (walk-b): both leg phases.
-   - outfit 4: one step phase -> standing <-> step.
-   Backward movement plays the same cycle in reverse order. */
+/* v1.3 walk cycles: EVERY outfit now has a full two-phase cycle
+   [idle, A, idle, B] (distance-based, one cycle per 2.2 m; backward
+   plays in reverse). v1.3 generated the phases the sheets lacked
+   (o1-walk-d, o2-walk-a/b, o4-walk-b; audit in BUILD-NOTES v1.3) and
+   retired o1-walk-c (a passing phase on the same leg as walk-a) from
+   the cycle. All cycle frames are normalised to identical figure
+   height / foot baseline / canvas height per outfit, and the v1.2
+   vertical bob is gone (it read as flutter — the frames carry the
+   motion now). */
 var WALK_CYCLES = [
-  ['o1-idle', 'o1-walk-a', 'o1-idle', 'o1-walk-c'],
-  ['o2-idle'],
+  ['o1-idle', 'o1-walk-a', 'o1-idle', 'o1-walk-d'],
+  ['o2-idle', 'o2-walk-a', 'o2-idle', 'o2-walk-b'],
   ['o3-idle', 'o3-walk-a', 'o3-idle', 'o3-walk-b'],
-  ['o4-idle', 'o4-walk-a']
+  ['o4-idle', 'o4-walk-a', 'o4-idle', 'o4-walk-b']
 ];
 var curOutfit = 0; // 0-based index into OUTFITS; kept across resets
 var texLoader = new THREE.TextureLoader();
@@ -519,7 +518,7 @@ OUTFITS.forEach(function(o, i){
   frameTex['o'+n+'-idle'] = idleTex[i];
   if (o.walkA) frameTex['o'+n+'-walk-a'] = loadTex('o'+n+'-walk-a', o.walkA);
   if (o.walkB) frameTex['o'+n+'-walk-b'] = loadTex('o'+n+'-walk-b', o.walkB);
-  if (o.walkC) frameTex['o'+n+'-walk-c'] = loadTex('o'+n+'-walk-c', o.walkC);
+  if (o.walkD) frameTex['o'+n+'-walk-d'] = loadTex('o'+n+'-walk-d', o.walkD);
 });
 var playerSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: idleTex[0], transparent: true }));
 playerSprite.scale.set(1.03, 2.05, 1);
@@ -576,6 +575,13 @@ function resetState(){
     if (o.shadow) o.shadow.position.set(o.cx, 0.02, o.cz);
   });
   clearRockets();
+  /* v1.3: purge every transient FX object on reset (tracers, muzzles,
+     marker, laser) so nothing from the previous run can linger */
+  for (var fi = 0; fi < fx.length; fi++){
+    if (fx[fi].keepObj) fx[fi].obj.visible = false; else scene.remove(fx[fi].obj);
+  }
+  fx.length = 0;
+  hideLaser();
   playerMesh.position.set(0,0,0); playerMesh.rotation.y = 0;
   updateHUD();
 }
@@ -606,12 +612,12 @@ var fx = [];
 function addTracer(a, b, color, life){
   var geo = new THREE.BufferGeometry().setFromPoints([a, b]);
   var line = new THREE.Line(geo, new THREE.LineBasicMaterial({color:color, transparent:true, opacity:0.95}));
-  scene.add(line); fx.push({obj:line, until:S.time+life, fade:true});
+  scene.add(line); fx.push({obj:line, born:performance.now(), lifeMs:Math.min(life, 0.15) * 1000, fade:true}); // v1.3: real-time deadline (S.time freezes outside play, which left tracers stuck on screen)
   return line;
 }
 function addMuzzle(pos){
   var s = new THREE.Mesh(new THREE.SphereGeometry(0.13, 6, 6), new THREE.MeshBasicMaterial({color:0xffcf6a}));
-  s.position.copy(pos); scene.add(s); fx.push({obj:s, until:S.time+0.07, fade:false});
+  s.position.copy(pos); scene.add(s); fx.push({obj:s, born:performance.now(), lifeMs:70, fade:false});
 }
 /* sniper laser: cylinder so thickness can change for the final warning */
 var laser = (function(){
@@ -815,7 +821,7 @@ function shoot(dir){
   addMuzzle(muzzle);
   if (!t){ showMsg('NO TARGET', true, 450); return; }
   marker.position.set(t.x, 1.4, t.z); marker.visible = true;
-  fx.push({obj:marker, until:S.time+0.22, fade:false, keepObj:true});
+  fx.push({obj:marker, born:performance.now(), lifeMs:220, fade:false, keepObj:true});
   showMsg('LOCK-ON', true, 350);
   addTracer(muzzle, new THREE.Vector3(t.x, 1.35, t.z), 0xffe28a, 0.12);
   /* hit resolution */
@@ -1126,7 +1132,13 @@ function clearRockets(){
 
 /* ===== Touch / mouse swipe ===== */
 var tsx=0, tsy=0, tst=0;
-app.addEventListener('touchstart', function(ev){ var t=ev.changedTouches[0]; tsx=t.clientX; tsy=t.clientY; tst=performance.now(); }, {passive:true});
+app.addEventListener('touchstart', function(ev){ var t=ev.changedTouches[0]; tsx=t.clientX; tsy=t.clientY; tst=performance.now(); curTx=t.clientX; curTy=t.clientY; }, {passive:true});
+var curTx=0, curTy=0;
+app.addEventListener('touchmove', function(ev){ var t=ev.changedTouches[0]; curTx=t.clientX; curTy=t.clientY; }, {passive:true});
+/* v1.3: if the browser hijacks a gesture (touchcancel instead of
+   touchend), still deliver the swipe from the last tracked position —
+   a cancelled gesture must never eat the player's input */
+app.addEventListener('touchcancel', function(){ lastTouchEndT = performance.now(); handlePointerEnd(curTx-tsx, curTy-tsy); }, {passive:true});
 var lastTouchEndT = 0;
 app.addEventListener('touchend', function(ev){
   var t=ev.changedTouches[0];
@@ -1240,14 +1252,21 @@ function loop(){
        collision-resolved every frame */
     if (S.coverAnim){
       var a = S.coverAnim;
+      /* v1.3: measure arrival against the collision-RESOLVED waypoint
+         (the raw waypoint can sit inside an expanded footprint — e.g.
+         after a rocket flipped a car — and then the transit never
+         'arrived', leaving the player grinding in place with swipes
+         seemingly dead). Watchdogs guarantee the transit always ends. */
+      a.t = (a.t || 0) + dt; a.segT = (a.segT || 0) + dt;
       var wp = a.path[a.seg];
-      var wdx = wp[0] - S.px, wdz = wp[1] - S.pz;
+      var wr0 = resolveCollision(wp[0], wp[1]);
+      var wdx = wr0[0] - S.px, wdz = wr0[1] - S.pz;
       var wdist = Math.hypot(wdx, wdz);
       var wstep = 11 * dt;
-      if (wdist <= Math.max(wstep, 0.02)){
-        var wr = resolveCollision(wp[0], wp[1]); S.px = wr[0]; S.pz = wr[1];
-        a.seg++;
-        if (a.seg >= a.path.length){ S.coverAnim = null; updateHUD(); }
+      if (wdist <= Math.max(wstep, 0.02) || a.segT > 1.2 || a.t > 3.5){
+        S.px = wr0[0]; S.pz = wr0[1];
+        a.seg++; a.segT = 0;
+        if (a.seg >= a.path.length || a.t > 3.5){ S.coverAnim = null; updateHUD(); }
       } else {
         var mr = resolveCollision(S.px + wdx / wdist * wstep, S.pz + wdz / wdist * wstep);
         S.px = mr[0]; S.pz = mr[1];
@@ -1290,7 +1309,7 @@ function loop(){
     playerMesh.position.set(S.px, 0, S.pz); // invisible anchor kept in sync
     var key = spriteKeyNow();
     var aspect = texAspect[key] || 0.5;
-    var bob = (moving && fullCycle) ? Math.abs(Math.sin(S.walkClock * Math.PI)) * 0.03 : 0;
+    var bob = 0; // v1.3: no vertical bob — with real two-phase frames for every outfit it only added flutter
     var pulse = (S.time < S.leanUntil) ? 1.04 : 1; // firing lean (kept from v1)
     var sh = SPRITE_H * pulse;
     playerSprite.scale.set(sh * aspect, sh, 1);
@@ -1309,11 +1328,17 @@ function loop(){
     }
     if ((S.time*2|0) !== ((S.time-dt)*2|0)) updateHUD();
   }
-  /* fx cleanup */
+  /* fx cleanup (v1.3: real-time based, runs every frame regardless of
+     phase, so a tracer can never outlive its deadline — not on death,
+     not on reset, not when the shooter/target died mid-flight) */
+  var fxNow = performance.now();
   for (var i=fx.length-1; i>=0; i--){
-    if (S.time > fx[i].until){
-      if (!fx[i].keepObj) scene.remove(fx[i].obj); else fx[i].obj.visible = false;
+    var fe = fx[i], fage = fxNow - fe.born;
+    if (fage >= fe.lifeMs){
+      if (!fe.keepObj) scene.remove(fe.obj); else fe.obj.visible = false;
       fx.splice(i,1);
+    } else if (fe.fade && fe.obj.material){
+      fe.obj.material.opacity = 0.95 * (1 - fage / fe.lifeMs);
     }
   }
   marker.rotation.z += dt*3; marker.rotation.x = Math.PI/2.2;
@@ -1339,7 +1364,12 @@ window.RLA = {
     flips: flipCount, rocketActive: rockets.length > 0,
     obstacles: obstacles.map(function(o){ return {x:o.cx, z:o.cz, hx:o.hx, hz:o.hz, rot:o.rot,
       kind:o.kind, type:o.type, cover:o.cover, flipped:o.flipped}; }),
-    enemies: enemies.map(function(e){return {kind:e.kind, side:e.side, z:e.z, alive:e.alive, active:e.active, state:e.state};})}; },
+    enemies: enemies.map(function(e){return {kind:e.kind, side:e.side, z:e.z, alive:e.alive, active:e.active, state:e.state};}),
+    /* v1.3 verification surface */
+    fxCount: fx.length,
+    lineCount: scene.children.filter(function(c){ return c.isLine; }).length,
+    msgText: elMsg.textContent, msgOpacity: String(elMsg.style.opacity),
+    coverAnim: !!S.coverAnim}; },
   swipe: onSwipe,
   teleport: function(z){ S.pz = z; },
   /* v1.2: place the player deterministically (clears cover/lane/anims) */
@@ -1365,6 +1395,12 @@ window.RLA = {
   /* v1.2: fire a rocket straight at the player from 13 m ahead */
   debugRocketAtPlayer: function(){
     spawnRocket(new THREE.Vector3(S.px, 1.4, S.pz + 13), new THREE.Vector3(S.px, 1.0, S.pz), null, 'left');
+    return true;
+  },
+  /* v1.3: fire one real tracer + muzzle through the production code path */
+  debugTracer: function(){
+    addTracer(new THREE.Vector3(S.px, 1.5, S.pz), new THREE.Vector3(S.px + 2, 1.4, S.pz + 12), 0xffe28a, 0.12);
+    addMuzzle(new THREE.Vector3(S.px, 1.5, S.pz + 0.5));
     return true;
   },
   selectOutfit: function(i){ if (S.phase==='outfit') selectOutfit(i); },
