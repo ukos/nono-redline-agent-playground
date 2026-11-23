@@ -74,7 +74,7 @@
   <div id="start" class="overlay">
     <img src="logo.jpg" alt="REDLINE AGENT">
     <div class="starttap">タップではじめる</div>
-    <div class="version">REDLINE AGENT prototype v1.3</div>
+    <div class="version">REDLINE AGENT prototype v1.4</div>
   </div>
   <div id="outfit" class="overlay hidden">
     <div class="otitle">AGENT OUTFIT — 衣装選択</div>
@@ -494,7 +494,13 @@ var OUTFITS = [
    the cycle. All cycle frames are normalised to identical figure
    height / foot baseline / canvas height per outfit, and the v1.2
    vertical bob is gone (it read as flutter — the frames carry the
-   motion now). */
+   motion now).
+   v1.4: ALL eight walk frames regenerated as narrow-stance back-lift
+   phases (real-device verdict on v1.3: legs spread sideways —
+   "octopus". The gait now reads front-to-back: one leg planted, the
+   other lifted behind with its sole to the viewer, feet within hip
+   width; foot-spread audit in BUILD-NOTES v1.4). Cycle structure,
+   timing and geometry normalisation unchanged. */
 var WALK_CYCLES = [
   ['o1-idle', 'o1-walk-a', 'o1-idle', 'o1-walk-d'],
   ['o2-idle', 'o2-walk-a', 'o2-idle', 'o2-walk-b'],
