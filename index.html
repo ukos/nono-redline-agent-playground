@@ -47,6 +47,46 @@
   .ocard:active{background:rgba(255,210,87,.18);border-color:#ffd257}
   .ocard img{height:148px;width:auto;border-radius:0;box-shadow:none}
   .oname{margin-top:8px;font-size:12.5px;letter-spacing:1px;color:#e8ecf4;line-height:1.5}
+  /* stage select (v1.6): rows built from the STAGES table in JS */
+  .sgrid{display:flex;flex-direction:column;gap:8px;width:min(94%,460px)}
+  .scard{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.20);border-radius:10px;padding:11px 14px;cursor:pointer;pointer-events:auto;display:flex;justify-content:space-between;align-items:center}
+  .scard:active{background:rgba(255,210,87,.18);border-color:#ffd257}
+  .scard .sno{color:#ffd257;font-weight:700;letter-spacing:1px;margin-right:10px}
+  .scard .sname{color:#ffe9c9;font-size:14px;letter-spacing:2px}
+  .scard .stag{font-size:11px;color:#9fb2cc;letter-spacing:1px}
+  .scard.disabled{opacity:.42;cursor:default}
+  .scard.disabled:active{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.20)}
+  .menubtn{display:inline-block;border:1px solid rgba(255,255,255,.30);border-radius:8px;padding:7px 20px;color:#ffe9c9;letter-spacing:2px;cursor:pointer;pointer-events:auto;background:rgba(255,255,255,.06);font-size:13px}
+  .menubtn:active{background:rgba(255,210,87,.18);border-color:#ffd257}
+  /* v1.7: gear button, drone button, settings + equipment screens */
+  #gearbtn{position:absolute;top:calc(50px + env(safe-area-inset-top));right:10px;z-index:15;font-size:21px;line-height:1;color:#ffe9c9;background:rgba(10,14,22,.55);border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:6px 10px;cursor:pointer;pointer-events:auto}
+  #gearbtn:active{background:rgba(255,210,87,.18);border-color:#ffd257}
+  #dronebtn{position:absolute;right:10px;bottom:calc(64px + env(safe-area-inset-bottom));font-size:12.5px;letter-spacing:1px;color:#ffe9c9;background:rgba(10,14,22,.62);border:1px solid rgba(255,210,87,.55);border-radius:8px;padding:9px 12px;pointer-events:auto;cursor:pointer;text-shadow:0 1px 3px #000}
+  #dronebtn:active{background:rgba(255,210,87,.22)}
+  #dronebtn.down{opacity:.45;color:#9fb2cc;border-color:rgba(255,255,255,.20)}
+  #settings{z-index:30;background:rgba(3,5,9,.94)}
+  .setlabel{font-size:12px;letter-spacing:2px;color:#9fb2cc;margin-bottom:8px}
+  .camrow{display:flex;gap:8px;margin-bottom:20px}
+  .cambtn{border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:9px 16px;color:#e8ecf4;font-size:13.5px;letter-spacing:1px;cursor:pointer;pointer-events:auto;background:rgba(255,255,255,.05)}
+  .cambtn.sel{border-color:#ffd257;color:#ffd257;background:rgba(255,210,87,.14)}
+  .setbtns{display:flex;flex-direction:column;gap:10px;margin-top:22px;width:min(80%,300px)}
+  .setbtn{border:1px solid rgba(255,255,255,.28);border-radius:8px;padding:10px 14px;color:#ffe9c9;font-size:13.5px;letter-spacing:2px;text-align:center;cursor:pointer;pointer-events:auto;background:rgba(255,255,255,.06)}
+  .setbtn:active{background:rgba(255,210,87,.18);border-color:#ffd257}
+  .setbtn.danger{color:#ff8b96;border-color:rgba(255,91,106,.5)}
+  .setbtn.danger.armed{background:rgba(255,40,60,.25);color:#fff}
+  #equip{z-index:12;background:rgba(3,5,9,.95);justify-content:flex-start;padding-top:calc(16px + env(safe-area-inset-top));overflow-y:auto}
+  #equipslots{display:flex;flex-direction:column;gap:7px;width:min(94%,460px)}
+  .eqslot{font-size:12px;letter-spacing:2px;color:#ffd257;margin:10px 0 2px 2px}
+  .eqrow{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:8px 12px;cursor:pointer;pointer-events:auto}
+  .eqrow.sel{border-color:#ffd257;background:rgba(255,210,87,.10)}
+  .eqart{position:relative;width:52px;height:52px;flex:0 0 52px;border-radius:6px;overflow:hidden;background:rgba(255,255,255,.05)}
+  .eqart img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:0;box-shadow:none}
+  .eqplate{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;font-size:9.5px;line-height:1.35;color:#ffe9c9;padding:2px;background:linear-gradient(160deg,rgba(87,182,255,.20),rgba(255,210,87,.12))}
+  .eqmeta{display:flex;flex-direction:column;flex:1;text-align:left}
+  .eqname{font-size:13.5px;color:#e8ecf4;letter-spacing:1px}
+  .eqdesc{font-size:10.5px;color:#9fb2cc;line-height:1.5;margin-top:2px}
+  .eqtag{font-size:10.5px;color:#ffd257;letter-spacing:1px;white-space:nowrap}
+  .eqnone{font-size:11px;color:#5f6c82;padding:2px 0 2px 4px;text-align:left}
   /* start screen (v1.1): logo on black, blends seamlessly */
   #start{background:#000;justify-content:center;padding:calc(12px + env(safe-area-inset-top)) 0 calc(12px + env(safe-area-inset-bottom)) 0;z-index:6}
   #start img{width:min(92%,560px);height:auto;border-radius:0;box-shadow:none}
@@ -68,13 +108,14 @@
     </div>
     <div id="state"></div>
     <div id="msg"></div>
+    <div id="dronebtn">偵察ドローン</div>
     <div id="help"><b>↑</b> 前進　<b>↓</b> 停止／もう一度↓ 後退<br><b>←→</b> 物陰へ（停止中も可）　<b>←←／→→</b> ロックオン射撃<br><b>↑↑</b> ダッシュ　<b>↓↓</b> バックステップ</div>
     <div id="dmg"></div>
   </div>
   <div id="start" class="overlay">
     <img src="logo.jpg" alt="REDLINE AGENT">
     <div class="starttap">タップではじめる</div>
-    <div class="version">REDLINE AGENT prototype v1.5</div>
+    <div class="version">REDLINE AGENT prototype v1.7</div>
   </div>
   <div id="outfit" class="overlay hidden">
     <div class="otitle">AGENT OUTFIT — 衣装選択</div>
@@ -85,6 +126,12 @@
       <div class="ocard" data-outfit="3"><img src="assets/rei-outfits/frames/o4-idle.png" alt="中世の狩人"><div class="oname">4. 中世の狩人<br>＋弓</div></div>
     </div>
     <div class="sub">主人公：レイ（タップで選択）</div>
+  </div>
+  <div id="stage" class="overlay hidden">
+    <div class="otitle">STAGE SELECT — ステージ選択</div>
+    <div class="sgrid" id="stagegrid"></div>
+    <div class="sub" style="margin-top:12px"><span id="equipopen" class="menubtn">装備</span></div>
+    <div class="sub">ステージ1のみプレイ可能（他は制作中）</div>
   </div>
   <div id="startcut" class="overlay hidden">
     <img id="startimg" src="assets/rei-outfits/frames/o1-start.png" alt="作戦開始">
@@ -101,6 +148,28 @@
     <div class="big" style="color:#ff5b6a">MISSION FAILED</div>
     <div class="sub">エージェントは倒れた…</div>
     <div class="tap">タップで最初から</div>
+  </div>
+  <div id="gearbtn" title="設定">⚙</div>
+  <div id="settings" class="overlay hidden">
+    <div class="otitle">SETTINGS — 設定</div>
+    <div class="setlabel">カメラ・視点</div>
+    <div class="camrow">
+      <span class="cambtn" data-cam="standard">標準</span>
+      <span class="cambtn" data-cam="low">低め</span>
+      <span class="cambtn" data-cam="high">高め</span>
+      <span class="cambtn" data-cam="close">寄り</span>
+    </div>
+    <div class="sub"><b>↑</b> 前進　<b>↓</b> 停止／もう一度↓ 後退<br><b>←→</b> 物陰へ（停止中も可）　<b>←←／→→</b> ロックオン射撃<br><b>↑↑</b> ダッシュ　<b>↓↓</b> バックステップ</div>
+    <div class="setbtns">
+      <div class="setbtn" id="stagebtn">ステージ選択へ</div>
+      <div class="setbtn danger" id="initbtn">データ初期化</div>
+      <div class="setbtn" id="settingsclose">閉じる</div>
+    </div>
+  </div>
+  <div id="equip" class="overlay hidden">
+    <div class="otitle">EQUIPMENT — 装備</div>
+    <div id="equipslots"></div>
+    <div class="setbtn" id="equipclose" style="margin:16px 0 calc(14px + env(safe-area-inset-bottom)) 0;width:min(60%,220px)">戻る</div>
   </div>
 </div>
 <script>/* Three.js r128 (cdnjs) inlined for self-contained prototype: headless-Chromium CDN fetch failed with SSL errors during local verification; same library/version FIELD GOLF uses. */
@@ -130,7 +199,7 @@ var P = {
   SNIPER_WARN_S: 1.2,     // red line warning time before sniper fires
   SNIPER_FINAL_S: 0.2,    // final warning (thicker/brighter) in last 0.2 s
   LIFE: 3,
-  TOTAL_ENEMIES: 6,
+  TOTAL_ENEMIES: 11, // v1.6: five enemy types, 11 in stage 1
   /* v1.2 additions */
   PLAYER_R: 0.25,         // player collision radius (m) vs obstacle footprints
   STRIDE_M: 0.55,         // walk-cycle stride length (m/step) -> ~4 steps/s at walk speed
@@ -599,8 +668,20 @@ function resetState(){
     leanUntil: -1,           // v1: brief forward lean after shooting
     shootPoseUntil: -1,      // v1.5: shooting-pose frame shown while S.time < this
     hintShown: false,        // v1.5: one-time control hint per run
-    rocketNextAt: Infinity   // v1.2: next allowed rocket launch (game time); armed past 60 m
+    rocketNextAt: Infinity,  // v1.2: next allowed rocket launch (game time); armed past 60 m
+    /* v1.7 run state */
+    maxLife: P.LIFE + (equipped.armor === 'vest2' ? 2 : equipped.armor === 'vest' ? 1 : 0), // vests: +1 / +2 life at run start
+    weaponCdUntil: 0,        // rifle: next lock-on shot locked out until this game time
+    shieldReadyAt: 0, shieldBlocks: 0,     // shield armor: one block / 20 s
+    shDroneReadyAt: 0, shDroneBlocks: 0,   // shield drone: one block / 25 s (separate)
+    hawkNextAt: 15, hawkMarkUntil: 0,      // hawk: mark all active enemies 3 s every 15 s
+    atkNextAt: 6,                          // attack drone: fires every 6 s
+    droneUntilMs: 0, droneDowned: false, droneUses: 0, // recon drone (real-time window)
+    lastReward: null
   };
+  S.life = S.maxLife;
+  pendingHits.length = 0;
+  refreshDroneBtn();
   enemies.forEach(function(e){ resetEnemy(e); });
   /* v1.2: restore every obstacle (rocket-flipped cars return home) */
   obstacles.forEach(function(o){
@@ -610,7 +691,7 @@ function resetState(){
     o.mesh.position.set(o.cx, o.pivot, o.cz);
     if (o.shadow) o.shadow.position.set(o.cx, 0.02, o.cz);
   });
-  clearRockets();
+  clearRockets(); lastRocketKind = null;
   /* v1.3: purge every transient FX object on reset (tracers, muzzles,
      marker, laser) so nothing from the previous run can linger */
   for (var fi = 0; fi < fx.length; fi++){
@@ -621,30 +702,138 @@ function resetState(){
   playerMesh.position.set(0,0,0); playerMesh.rotation.y = 0;
   updateHUD();
 }
+/* ===== v1.6: enemies are pixel-art SPRITES (assets/enemies/, see
+   ENEMY-TYPES.md) — the low-poly box figures are retired for enemies
+   (stage objects stay low-poly). canvasH = on-screen sprite height in
+   metres, chosen so the FIGURE reads def.figH metres tall (the sprite
+   canvases carry a 6 px foot pad: fig 560/572, heavy 600/612).
+   dodge: per-type lock-on dodge rate (the v0.2 30% lives on as the
+   agent's rate). range: activation distance (the launcher is a
+   long-range specialist — it must be active for the rocket cadence
+   once the player is past 60 m). */
+var ENEMY_TYPES = {
+  agent:    { hp:1, dodge:0.30, range:30,  figH:1.85, canvasH:1.889, padM:0.0198, defAspect:0.336,
+              aim:'e1-agent-aim',    shoot:'e1-agent-shoot' },
+  sniper:   { hp:1, dodge:0,    range:42,  figH:1.85, canvasH:1.889, padM:0.0198, defAspect:0.379,
+              aim:'e2-sniper-aim',   shoot:'e2-sniper-shoot' },
+  launcher: { hp:2, dodge:0.15, range:130, figH:1.85, canvasH:1.889, padM:0.0198, defAspect:0.453,
+              aim:'e3-launcher-aim', shoot:'e3-launcher-shoot' },
+  heavy:    { hp:3, dodge:0,    range:30,  figH:1.98, canvasH:2.020, padM:0.0198, defAspect:0.484,
+              aim:'e4-heavy-aim',    shoot:'e4-heavy-shoot' },
+  runner:   { hp:1, dodge:0.55, range:30,  figH:1.85, canvasH:1.889, padM:0.0198, defAspect:0.385,
+              aim:'e5-runner-aim',   shoot:'e5-runner-shoot' }
+};
+var enemyTex = {};
+Object.keys(ENEMY_TYPES).forEach(function(k){
+  var d = ENEMY_TYPES[k];
+  enemyTex[d.aim] = loadTex(d.aim, 'assets/enemies/' + d.aim + '.png');
+  enemyTex[d.shoot] = loadTex(d.shoot, 'assets/enemies/' + d.shoot + '.png');
+});
+var lastRocketKind = null; // v1.6 verification surface: who fired the last rocket
+/* HP pips for multi-HP enemies (small canvas sprite above the head) */
+function makePips(e){
+  var c = document.createElement('canvas'); c.width = 132; c.height = 30;
+  e.pipCtx = c.getContext('2d');
+  e.pipTex = new THREE.CanvasTexture(c);
+  var s = new THREE.Sprite(new THREE.SpriteMaterial({ map: e.pipTex, transparent: true, depthWrite: false }));
+  s.scale.set(1.0, 0.227, 1); s.position.y = e.def.canvasH + 0.17;
+  e.mesh.add(s); e.pipSprite = s;
+  drawPips(e);
+}
+function drawPips(e){
+  if (!e.pipCtx) return;
+  var g = e.pipCtx; g.clearRect(0, 0, 132, 30);
+  for (var i = 0; i < e.maxHp; i++){
+    var cx = 66 + (i - (e.maxHp - 1) / 2) * 34, cy = 15;
+    g.beginPath(); g.arc(cx, cy, 10, 0, Math.PI * 2);
+    if (i < e.hp){ g.fillStyle = '#ffd257'; g.fill(); }
+    else { g.strokeStyle = 'rgba(255,255,255,0.4)'; g.lineWidth = 2; g.stroke(); }
+  }
+  e.pipTex.needsUpdate = true;
+  if (e.pipSprite) e.pipSprite.visible = e.alive && e.active && e.hp > 0;
+}
+/* ===== v1.7: enemy markers (recon drone view + hawk) — a coloured pin
+   with the type initial above the enemy plus a ground ring. One marker
+   group per enemy, created hidden; the main loop toggles visibility. */
+var MARKER_STYLE = {
+  agent:    { col: '#57b6ff', letter: 'A' },
+  sniper:   { col: '#ff3040', letter: 'S' },
+  launcher: { col: '#ff9a30', letter: 'L' },
+  heavy:    { col: '#ffd257', letter: 'H' },
+  runner:   { col: '#7dff8a', letter: 'R' }
+};
+function makeMarker(e){
+  var st = MARKER_STYLE[e.kind];
+  var c = document.createElement('canvas'); c.width = 128; c.height = 160;
+  var g = c.getContext('2d');
+  g.fillStyle = st.col;
+  g.beginPath(); g.arc(64, 52, 40, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.moveTo(44, 82); g.lineTo(84, 82); g.lineTo(64, 130); g.closePath(); g.fill();
+  g.fillStyle = '#0b0e14'; g.font = '800 50px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(st.letter, 64, 55);
+  var spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
+  spr.scale.set(0.95, 1.19, 1); spr.position.y = 3.35;
+  var grp = new THREE.Group(); grp.add(spr);
+  var ring = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.78, 24),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color(st.col), transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }));
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04; grp.add(ring);
+  grp.visible = false; scene.add(grp);
+  return grp;
+}
 var enemies = [];
 function makeEnemy(kind, x, z, side){
-  var mesh = makeFigure(kind==='sniper' ? 0x2a1418 : 0x232830, kind==='sniper' ? 0xff2020 : 0x666e7d);
-  mesh.add(blobShadow(0.55, 0.55, 0.34)); // v1.1: ground the enemy figures
-  mesh.position.set(x, 0, z); mesh.rotation.y = Math.PI; // face the player (back down the street)
-  mesh.visible = false; scene.add(mesh);
-  var e = {kind:kind, x:x, z:z, side:side, mesh:mesh, alive:true, active:false,
-           state:'idle', stateT:0, dodgeUntil:-1, hitFlashT:0, baseX:x};
+  var def = ENEMY_TYPES[kind];
+  var grp = new THREE.Group();
+  var spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: enemyTex[def.aim], transparent: true }));
+  spr.scale.set(def.canvasH * def.defAspect, def.canvasH, 1);
+  spr.position.y = def.canvasH / 2 - def.padM;
+  grp.add(spr);
+  grp.add(blobShadow(kind === 'heavy' ? 0.72 : 0.55, kind === 'heavy' ? 0.72 : 0.55, 0.34)); // ground the sprite
+  grp.position.set(x, 0, z);
+  grp.visible = false; scene.add(grp);
+  var e = {kind:kind, def:def, x:x, z:z, homeZ:z, side:side, mesh:grp, sprite:spr, alive:true, active:false,
+           state:'idle', stateT:0, dodgeUntil:-1, baseX:x, hp:def.hp, maxHp:def.hp,
+           shootFxUntil:-1, flashUntil:-1, burstLeft:0, burstT:0, shotsFired:0,
+           moveTargetZ:null, deathT:0, texKey:def.aim, spriteBaseY:def.canvasH / 2 - def.padM,
+           pipCtx:null, pipTex:null, pipSprite:null, marker:null, dogWarned:false, prevState:'idle'};
+  if (def.hp > 1) makePips(e);
+  e.marker = makeMarker(e);
   enemies.push(e); return e;
 }
 function resetEnemy(e){
   e.alive = true; e.active = false; e.state='idle'; e.stateT = 0; e.dodgeUntil = -1;
-  e.mesh.visible = false; e.mesh.position.set(e.baseX, 0, e.z); e.mesh.rotation.z = 0; e.mesh.rotation.y = Math.PI;
+  e.hp = e.maxHp; e.z = e.homeZ; e.shootFxUntil = -1; e.flashUntil = -1;
+  e.burstLeft = 0; e.burstT = 0; e.shotsFired = 0; e.moveTargetZ = null; e.deathT = 0;
+  e.dogWarned = false; e.prevState = 'idle';
+  if (e.marker) e.marker.visible = false;
+  e.texKey = e.def.aim;
+  e.sprite.material.map = enemyTex[e.def.aim]; e.sprite.material.needsUpdate = true;
+  e.sprite.material.rotation = 0; e.sprite.material.opacity = 1;
+  e.sprite.material.color.setHex(0xffffff);
+  e.sprite.position.y = e.spriteBaseY;
+  e.mesh.visible = false; e.mesh.position.set(e.baseX, 0, e.z);
+  drawPips(e); if (e.pipSprite) e.pipSprite.visible = false;
 }
-/* Approved stage order: normal×1 -> normal×2 -> sniper×1 -> normal×1 + sniper×1 */
-makeEnemy('normal',  3.4, 38, 'left');
-makeEnemy('normal',  3.6, 82, 'left');
-makeEnemy('normal', -3.6, 86, 'right');
-makeEnemy('sniper', -3.6, 128, 'right');
-makeEnemy('normal',  3.6, 168, 'left');
-makeEnemy('sniper', -3.6, 172, 'right');
+/* v1.6 stage 1 composition (waves, ~90 s pacing and tutorial order kept):
+   agent×1 -> agent×2 -> sniper×1 -> agent+runner -> launcher×1 (z=166,
+   rockets arm past 60 m) -> heavy+agent -> agent+sniper finale.
+   The brief said "total 10" but its own wave list sums to 11 — the
+   waves were implemented as listed (11). */
+makeEnemy('agent',    3.4,  38, 'left');
+makeEnemy('agent',    3.6,  82, 'left');
+makeEnemy('agent',   -3.6,  86, 'right');
+makeEnemy('sniper',  -3.6, 128, 'right');
+makeEnemy('agent',    3.6, 156, 'left');
+makeEnemy('runner',  -3.6, 160, 'right');
+makeEnemy('launcher',-3.6, 166, 'right');
+makeEnemy('heavy',    3.6, 180, 'left');
+makeEnemy('agent',   -3.6, 183, 'right');
+makeEnemy('agent',    3.6, 192, 'left');
+makeEnemy('sniper',  -3.6, 195, 'right');
 
 /* ===== FX: tracers, laser, markers ===== */
 var fx = [];
+var pendingHits = []; // v1.7: scheduled follow-up hits (SMG second hit)
 function addTracer(a, b, color, life){
   var geo = new THREE.BufferGeometry().setFromPoints([a, b]);
   var line = new THREE.Line(geo, new THREE.LineBasicMaterial({color:color, transparent:true, opacity:0.95}));
@@ -690,7 +879,8 @@ function showMsg(t, small, ms){
 }
 function updateHUD(){
   var h = '';
-  for (var i=0;i<P.LIFE;i++) h += '<span class="'+(i<S.life?'':'off')+'">♥</span>';
+  var maxL = S.maxLife || P.LIFE;
+  for (var i=0;i<maxL;i++) h += '<span class="'+(i<S.life?'':'off')+'">♥</span>';
   elLife.innerHTML = h;
   elKills.textContent = '撃破 ' + S.kills + ' / ' + P.TOTAL_ENEMIES;
   elProg.style.width = Math.min(100, S.pz / P.STREET_LEN * 100) + '%';
@@ -701,7 +891,11 @@ function updateHUD(){
            S.cover ? '物陰（' + (S.cover.side==='left'?'左':'右') + '）' :
            S.lane ? (S.mode==='forward' ? '路肩を前進中' : S.mode==='back' ? '路肩を後退中' : '路肩') :
            S.mode==='forward' ? '前進中' : S.mode==='back' ? '後退中' : '停止';
-  elState.innerHTML = '状態：<b>' + st + '</b>　残り ' + Math.max(0, Math.ceil(P.STREET_LEN - S.pz)) + 'm';
+  /* v1.7: shield cooldown indicators */
+  var extra = '';
+  if (equipped.armor === 'shield') extra += '　シールド：' + (S.time >= (S.shieldReadyAt || 0) ? 'OK' : 'あと' + Math.ceil((S.shieldReadyAt || 0) - S.time) + 's');
+  if (equipped.companion === 'shdrone') extra += '　Sドローン：' + (S.time >= (S.shDroneReadyAt || 0) ? 'OK' : 'あと' + Math.ceil((S.shDroneReadyAt || 0) - S.time) + 's');
+  elState.innerHTML = '状態：<b>' + st + '</b>　残り ' + Math.max(0, Math.ceil(P.STREET_LEN - S.pz)) + 'm' + extra;
 }
 
 /* ===== Input: swipe (touch/mouse) + keyboard, one shared "swipe" event ===== */
@@ -881,6 +1075,8 @@ function pickTarget(dir){
   return pool[0];
 }
 function shoot(dir){
+  /* v1.7 rifle: after firing, the next lock-on shot is locked out 0.8 s */
+  if (S.time < (S.weaponCdUntil || 0)){ showMsg('クールダウン中', true, 450); return; }
   var t = pickTarget(dir);
   S.shotsFired++;
   /* v1.5: with a shooting pose available for this outfit, show it for
@@ -895,36 +1091,86 @@ function shoot(dir){
     ? new THREE.Vector3(S.px + (dir==='left'?0.35:-0.35), 1.6, S.pz + 0.55)
     : new THREE.Vector3(S.px + (dir==='left'?0.3:-0.3), 1.5, S.pz + 0.5);
   addMuzzle(muzzle);
+  if (equipped.weapon === 'rifle') S.weaponCdUntil = S.time + 0.8;
   if (!t){ showMsg('NO TARGET', true, 450); return; }
   marker.position.set(t.x, 1.4, t.z); marker.visible = true;
   fx.push({obj:marker, born:performance.now(), lifeMs:220, fade:false, keepObj:true});
   showMsg('LOCK-ON', true, 350);
-  addTracer(muzzle, new THREE.Vector3(t.x, 1.35, t.z), 0xffe28a, 0.12);
-  /* hit resolution */
-  if (t.kind === 'sniper'){ killEnemy(t); return; }        // snipers never dodge
-  if (S.time < t.dodgeUntil){ killEnemy(t); return; }      // guaranteed hit window after a dodge
-  if (Math.random() < P.DODGE_RATE){
+  resolveShotHit(t, dir, muzzle);
+  /* v1.7 SMG: a second hit follows 0.12 s later, resolved on its own
+     (own dodge roll; the post-dodge guaranteed window applies as usual) */
+  if (equipped.weapon === 'smg') pendingHits.push({at: S.time + 0.12, target: t, dir: dir});
+}
+/* one hit of a player shot: tracer, dodge roll, damage.
+   v1.7 weapons: rifle deals 2 damage; shotgun splashes 1 damage to any
+   other active enemy within 3.5 m of the target (no dodge roll). */
+function resolveShotHit(t, dir, muzzle){
+  if (!t || !t.alive) return;
+  var from = muzzle || new THREE.Vector3(S.px + (dir==='left'?0.35:-0.35), 1.6, S.pz + 0.55);
+  addTracer(from, new THREE.Vector3(t.x, 1.35, t.z), 0xffe28a, 0.12);
+  /* hit resolution (v1.6: per-type dodge rate + HP) */
+  if (t.def.dodge > 0 && S.time >= t.dodgeUntil && Math.random() < t.def.dodge){
     t.dodgeUntil = S.time + P.DODGE_GUARANTEE_S;
     t.state = 'dodging'; t.stateT = 0;
     showMsg('DODGED!', true, 500);
     return;
   }
-  killEnemy(t);
+  hitEnemy(t, equipped.weapon === 'rifle' ? 2 : 1); // dodge 0 types (sniper/heavy) and the guaranteed window land here
+  if (equipped.weapon === 'shotgun'){
+    enemies.forEach(function(o){
+      if (o !== t && o.alive && o.active && Math.hypot(o.x - t.x, o.z - t.z) <= 3.5) applyHit(o, 1);
+    });
+  }
+}
+/* raw damage application shared by player hits and the attack drone */
+function applyHit(e, dmg){
+  e.hp -= dmg; e.flashUntil = S.time + 0.13;
+  drawPips(e);
+  if (e.hp <= 0){ killEnemy(e); return true; }
+  return false;
+}
+function hitEnemy(e, dmg){
+  if (applyHit(e, dmg || 1)) return;
+  showMsg('HIT! （残り' + e.hp + '）', true, 450);
+  updateHUD();
 }
 function killEnemy(e){
   e.alive = false; S.kills++;
-  e.mesh.rotation.z = Math.PI/2 * 0.9; e.mesh.position.y = 0.25;
+  e.deathT = 0.0001; // v1.6: sprite tip-and-fade defeat animation (updateDeath)
+  if (e.pipSprite) e.pipSprite.visible = false;
   if (e.kind==='sniper' && e.state==='aim') hideLaser();
   showMsg('HIT!', true, 450);
-  setTimeout(function(){ e.mesh.visible = false; }, 900);
   updateHUD();
+}
+/* v1.6: defeat for a billboard — tip sideways, sink, then fade */
+function updateDeath(e, dt){
+  e.deathT += dt / 0.9;
+  var k = Math.min(1, e.deathT);
+  e.sprite.material.rotation = -1.35 * k;
+  e.sprite.position.y = e.spriteBaseY * (1 - 0.5 * k);
+  e.sprite.material.opacity = 1 - Math.max(0, k - 0.55) / 0.45;
+  if (k >= 1){ e.mesh.visible = false; e.deathT = 0; }
 }
 
 /* ===== Damage ===== */
 var godMode = false; // verification-only: collision drives teleport the player all over the street
-function damagePlayer(){
+function damagePlayer(fromRocket){
   if (godMode) return;
   if (S.time < S.invulnUntil) return;
+  /* v1.7: shields block one enemy hit per cooldown — the shield ARMOR
+     is consumed before the shield DRONE; rockets are never blocked */
+  if (!fromRocket){
+    if (equipped.armor === 'shield' && S.time >= (S.shieldReadyAt || 0)){
+      S.shieldReadyAt = S.time + 20; S.shieldBlocks++;
+      showMsg('シールドで防いだ！', true, 700); updateHUD();
+      return;
+    }
+    if (equipped.companion === 'shdrone' && S.time >= (S.shDroneReadyAt || 0)){
+      S.shDroneReadyAt = S.time + 25; S.shDroneBlocks++;
+      showMsg('シールドドローンが防いだ！', true, 700); updateHUD();
+      return;
+    }
+  }
   S.life--; S.invulnUntil = S.time + 1.0;
   elDmg.style.opacity = 1; setTimeout(function(){ elDmg.style.opacity = 0; }, 180);
   showMsg('被弾！', false, 600);
@@ -935,41 +1181,100 @@ function damagePlayer(){
 }
 
 /* ===== Enemy logic ===== */
+function enemyDuckX(e){ return e.baseX + (e.side==='left' ? 1.3 : -1.3); }
 function enemyUpdate(e, dt){
   if (!e.alive) return;
   var dz = e.z - S.pz;
   if (!e.active){
-    var range = e.kind==='sniper' ? 42 : 30;
-    if (dz < range && dz > 0){ e.active = true; e.mesh.visible = true; e.state = e.kind==='sniper' ? 'incover' : 'exposed'; e.stateT = 0; }
+    if (dz < e.def.range && dz > 0){
+      e.active = true; e.mesh.visible = true;
+      e.state = (e.kind==='sniper' || e.kind==='launcher') ? 'incover' : 'exposed';
+      e.stateT = 0; drawPips(e);
+    }
     return;
   }
   if (dz < -6){ e.active = false; e.mesh.visible = false; hideLaserIf(e); return; } // left behind
   e.stateT += dt;
-  /* face player, slight bob */
   e.mesh.position.y = 0;
-  if (e.kind === 'normal'){
+  e.mesh.position.z = e.z;
+  /* v1.7 dog: the warning fires 0.4 s before the enemy's own cue —
+     agent/heavy/runner just before they fire, sniper as its aim (and
+     red line) begins; the sniper's aim itself also starts 0.4 s early
+     (its warn window stretches by the same 0.4 s, so the SHOT lands at
+     the same moment as without the dog — only the cue moves earlier) */
+  if (e.state !== e.prevState){ e.prevState = e.state; e.dogWarned = false; }
+  if (equipped.companion === 'dog' && !e.dogWarned){
+    if ((e.kind === 'agent'    && e.state === 'exposed' && e.stateT > 1.15 - 0.4) ||
+        (e.kind === 'heavy'    && e.state === 'exposed' && e.stateT > 1.6 - 0.4) ||
+        (e.kind === 'runner'   && e.state === 'exposed' && e.stateT > 1.0 - 0.4) ||
+        (e.kind === 'sniper'   && e.state === 'aim')){
+      e.dogWarned = true;
+      showMsg('犬が警告！', true, 600);
+    }
+  }
+  /* --- per-type behaviour --- */
+  if (e.kind === 'agent' || e.kind === 'runner'){
     if (e.state === 'dodging'){
       e.mesh.position.x = e.baseX + Math.sin(e.stateT * 30) * 0.55;
-      if (e.stateT > 0.35){ e.mesh.position.x = e.baseX; e.state='exposed'; e.stateT = 0; }
+      if (e.stateT > 0.35){ e.mesh.position.x = e.baseX; e.state='exposed'; e.stateT = 0; e.burstLeft = 0; }
     } else if (e.state === 'exposed'){
       e.mesh.position.x = e.baseX;
-      if (e.stateT > 1.15){ // fire once per exposure window
-        e.state = 'duck'; e.stateT = 0;
-        enemyFire(e);
+      if (e.kind === 'agent'){
+        if (e.stateT > 1.15){ // fire once per exposure window
+          e.state = 'duck'; e.stateT = 0;
+          enemyFire(e);
+        }
+      } else { /* runner: 3-round burst, then relocate */
+        if (e.burstLeft > 0){
+          e.burstT -= dt;
+          if (e.burstT <= 0){
+            enemyFire(e); e.burstLeft--; e.burstT = 0.09;
+            if (e.burstLeft === 0){ e.state = 'move'; e.stateT = 0; e.moveTargetZ = runnerNextZ(e); }
+          }
+        } else if (e.stateT > 1.0){ e.burstLeft = 3; e.burstT = 0; }
       }
-    } else if (e.state === 'duck'){
-      e.mesh.position.x = e.baseX + (e.side==='left' ? 1.3 : -1.3); // behind cover object side
+    } else if (e.state === 'duck'){ // agent only
+      e.mesh.position.x = enemyDuckX(e); // behind cover object side
       if (e.stateT > 1.5){ e.state = 'exposed'; e.stateT = 0; }
+    } else if (e.state === 'move'){ // runner only: relocate between covers
+      e.mesh.position.x = e.baseX;
+      var mv = 5.0 * dt, rem = e.moveTargetZ - e.z;
+      if (Math.abs(rem) <= mv){ e.z = e.moveTargetZ; e.state = 'exposed'; e.stateT = 0; }
+      else e.z += Math.sign(rem) * mv;
+      e.mesh.position.z = e.z;
+    }
+  } else if (e.kind === 'launcher'){
+    /* stays behind cover; steps out only around a rocket launch
+       (the global cadence in the main loop fires via tryFireRocket) */
+    e.mesh.position.x = (S.time < e.shootFxUntil + 0.35) ? e.baseX : enemyDuckX(e);
+  } else if (e.kind === 'heavy'){
+    if (e.state === 'exposed'){
+      e.mesh.position.x = e.baseX;
+      if (e.stateT > 1.6){ e.state = 'duck'; e.stateT = 0; enemyFire(e); }
+    } else if (e.state === 'duck'){
+      e.mesh.position.x = enemyDuckX(e);
+      if (e.stateT > 1.4){
+        var tz = heavyNextZ(e);
+        if (tz !== null){ e.state = 'advance'; e.stateT = 0; e.moveTargetZ = tz; }
+        else { e.state = 'exposed'; e.stateT = 0; }
+      }
+    } else if (e.state === 'advance'){
+      e.mesh.position.x = enemyDuckX(e);
+      var hv = 1.6 * dt, hr = e.moveTargetZ - e.z;
+      if (Math.abs(hr) <= hv){ e.z = e.moveTargetZ; e.state = 'exposed'; e.stateT = 0; }
+      else e.z += Math.sign(hr) * hv;
+      e.mesh.position.z = e.z;
     }
   } else { /* sniper */
     if (e.state === 'incover'){
-      e.mesh.position.x = e.baseX + (e.side==='left' ? 1.3 : -1.3);
-      if (e.stateT > 2.2){ e.state = 'aim'; e.stateT = 0; }
+      e.mesh.position.x = enemyDuckX(e);
+      if (e.stateT > (equipped.companion === 'dog' ? 1.8 : 2.2)){ e.state = 'aim'; e.stateT = 0; } // v1.7 dog: line appears 0.4 s early
     } else if (e.state === 'aim'){
       e.mesh.position.x = e.baseX;
       var from = new THREE.Vector3(e.x, 1.55, e.z);
       var to = new THREE.Vector3(S.px, 1.35, S.pz);
-      var finalW = e.stateT > P.SNIPER_WARN_S - P.SNIPER_FINAL_S;
+      var warnS = P.SNIPER_WARN_S + (equipped.companion === 'dog' ? 0.4 : 0); // v1.7 dog: stretched warn, same shot timing
+      var finalW = e.stateT > warnS - P.SNIPER_FINAL_S;
       if (shotBlockedByLane(e)){
         /* v1.2: player in the opposite edge lane — the object row blocks
            the line: draw it only up to the cover object */
@@ -979,8 +1284,9 @@ function enemyUpdate(e, dt){
       } else {
         aimLaser(from, to, finalW ? 0.05 : 0.018, finalW ? 1.0 : 0.8);
       }
-      if (e.stateT >= P.SNIPER_WARN_S){
+      if (e.stateT >= warnS){
         hideLaser();
+        e.shootFxUntil = S.time + 0.25; e.shotsFired++;
         addTracer(from, new THREE.Vector3(S.px, 1.3, S.pz), 0xff4030, 0.15);
         addMuzzle(from);
         if (shotBlockedByLane(e)){ showMsg('BLOCKED', true, 500); }
@@ -989,9 +1295,42 @@ function enemyUpdate(e, dt){
       }
     }
   }
+  /* --- v1.6 sprite presentation: AIM/SHOOT frame, hit flash, dodge lean --- */
+  var key = (S.time < e.shootFxUntil) ? e.def.shoot : e.def.aim;
+  if (key !== e.texKey){
+    e.texKey = key;
+    e.sprite.material.map = enemyTex[key]; e.sprite.material.needsUpdate = true;
+  }
+  var asp = texAspect[key] || e.def.defAspect;
+  e.sprite.scale.set(e.def.canvasH * asp, e.def.canvasH, 1);
+  e.sprite.position.y = e.spriteBaseY;
+  e.sprite.material.color.setHex(S.time < e.flashUntil ? 0xff9a9a : 0xffffff);
+  e.sprite.material.rotation = (e.state === 'dodging') ? Math.sin(e.stateT * 30) * 0.10 : 0;
+  if (e.pipSprite) e.pipSprite.visible = e.active && e.hp > 0;
+}
+/* runner relocation: another cover on the same side, 3–12 m away */
+function runnerNextZ(e){
+  var opts = covers.filter(function(c){
+    if (e.side === 'left' ? c.cx <= 0 : c.cx >= 0) return false;
+    var d = Math.abs(c.cz - e.z);
+    return d >= 3 && d <= 12;
+  });
+  if (opts.length) return opts[Math.floor(Math.random() * opts.length)].cz;
+  return Math.max(S.pz + 5, Math.min(P.STREET_LEN - 4, e.z + (Math.random() < 0.5 ? -6 : 6)));
+}
+/* heavy advance: the nearest cover on its side that is closer to the
+   player than its current position (never past player + 6 m) */
+function heavyNextZ(e){
+  var best = null;
+  covers.forEach(function(c){
+    if (e.side === 'left' ? c.cx <= 0 : c.cx >= 0) return;
+    if (c.cz < e.z - 3 && c.cz > S.pz + 6 && (best === null || c.cz > best)) best = c.cz;
+  });
+  return best;
 }
 function hideLaserIf(e){ if (e.kind==='sniper' && e.state==='aim') hideLaser(); }
 function enemyFire(e){
+  e.shootFxUntil = S.time + 0.25; e.shotsFired++;
   var from = new THREE.Vector3(e.mesh.position.x, 1.5, e.z);
   var to = new THREE.Vector3(S.px, 1.3, S.pz);
   addMuzzle(from);
@@ -1055,11 +1394,12 @@ function spawnRocket(from, targetPos, targetObj, sourceSide){
 function tryFireRocket(){
   var best = null, bestDz = 1e9;
   enemies.forEach(function(e){
-    if (!e.alive || !e.active || e.kind !== 'normal') return;
+    if (!e.alive || !e.active || e.kind !== 'launcher') return; // v1.6: rockets belong to the launcher type only
     var dz = e.z - S.pz;
-    if (dz > 0 && dz <= 45 && dz < bestDz){ bestDz = dz; best = e; }
+    if (dz > 0 && dz <= 120 && dz < bestDz){ bestDz = dz; best = e; } // v1.6: launcher range — a rocket specialist engages from long range (was 45 m when normal enemies carried the launcher)
   });
   if (!best) return false;
+  best.shootFxUntil = S.time + 0.25; best.shotsFired++; lastRocketKind = best.kind;
   var from = new THREE.Vector3(best.mesh.position.x, 1.5, best.z);
   /* lane rule: a rocket from the opposite side is aimed at the object row
      (the cover object the player is using), not at the player */
@@ -1175,7 +1515,7 @@ function updateRockets(dt){
       var pd = Math.hypot(r.pos.x - S.px, r.pos.z - S.pz);
       if (pd < 0.55){
         explodeAt(r.pos);
-        if (!S.cover) damagePlayer();
+        if (!S.cover) damagePlayer(true); // v1.7: rockets bypass shields
         else showMsg('間一髪！', true, 500);
         done = true;
       }
@@ -1230,18 +1570,136 @@ app.addEventListener('mouseup', function(ev){
   handlePointerEnd(dx, dy);
 });
 function handlePointerEnd(dx, dy){
+  if (settingsOpen || equipOpen) return; // v1.7: menus own the input while open
   if (S.phase !== 'play'){ tapToStart(); return; }
+  if (droneActive()){ endDrone(); return; } // v1.7: any tap ends the drone view early
   if (Math.abs(dx) < 24 && Math.abs(dy) < 24) return; // tap: no action in play
   if (Math.abs(dx) > Math.abs(dy)) onSwipe(dx>0 ? 'right' : 'left');
   else onSwipe(dy<0 ? 'up' : 'down');
 }
-/* ===== v1.1 flow: start (logo) -> outfit select -> start cut-in -> play ===== */
+/* ===== flow: start (logo) -> outfit select -> STAGE select (v1.6)
+   -> start cut-in -> play ===== */
+/* v1.6: the stage list lives in ONE table — future stages slot in by
+   flipping `playable` (and adding their builder); only stage 1 exists. */
+var STAGES = [
+  { name: '都会・夜',       playable: true  },
+  { name: 'ジャングル',     playable: false },
+  { name: '紛争地帯',       playable: false },
+  { name: '砂漠',           playable: false },
+  { name: '中東の街並み',   playable: false },
+  { name: 'コンテナ港',     playable: false },
+  { name: '橋の上',         playable: false },
+  { name: '駅・地下通路',   playable: false }
+];
+var curStage = 0;
+/* v1.7: cards are rebuilt whenever progress changes. Card states are
+   honest about the two different reasons a stage cannot be played:
+   content missing (制作中 — unlocking is recorded but the stage does
+   not exist yet) vs not yet unlocked (ロック). Only stage 1 has
+   content, so 2-8 always read 制作中 for now. */
+function buildStageCards(){
+  var grid = document.getElementById('stagegrid');
+  grid.innerHTML = '';
+  STAGES.forEach(function(st, i){
+    var cleared = progress && progress.cleared[i];
+    var unlocked = progress && i < progress.unlocked;
+    var tag = !st.playable ? '制作中' : cleared ? 'クリア済み ✓' : unlocked ? 'プレイ可能' : 'ロック';
+    var d = document.createElement('div');
+    d.className = 'scard' + (st.playable ? '' : ' disabled');
+    d.setAttribute('data-stage', i);
+    d.innerHTML = '<span><span class="sno">' + (i + 1) + '</span><span class="sname">' + st.name + '</span></span>' +
+                  '<span class="stag">' + tag + '</span>';
+    d.addEventListener('click', function(ev){ ev.stopPropagation(); selectStage(i); });
+    grid.appendChild(d);
+  });
+}
+/* ===== v1.7: persistence (localStorage, prefix rla_) ===== */
+var SAVE_KEYS = { settings: 'rla_settings', progress: 'rla_progress', items: 'rla_items' };
+function saveJSON(key, obj){ try { localStorage.setItem(key, JSON.stringify(obj)); } catch (e) {} }
+function loadJSON(key){ try { var v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+function freshProgress(){ return { cleared: STAGES.map(function(){ return false; }), unlocked: 1 }; }
+var settings = { cam: 'standard' };
+var progress = freshProgress();
+var owned = [];                                        // item ids, in award order
+var equipped = { weapon: null, armor: null, companion: null };
+/* the item table lives below (ITEMS) — loadSave runs after it */
+function loadSave(){
+  var s = loadJSON(SAVE_KEYS.settings);
+  if (s && typeof s.cam === 'string' && CAM_PRESETS[s.cam]) settings.cam = s.cam;
+  var p = loadJSON(SAVE_KEYS.progress);
+  if (p && Array.isArray(p.cleared)){
+    progress.cleared = STAGES.map(function(_, i){ return !!p.cleared[i]; });
+    if (typeof p.unlocked === 'number') progress.unlocked = Math.max(1, Math.min(STAGES.length, p.unlocked));
+  }
+  var it = loadJSON(SAVE_KEYS.items);
+  if (it){
+    if (Array.isArray(it.owned)) owned = it.owned.filter(function(id){ return !!ITEMS[id]; });
+    if (it.equipped) ['weapon', 'armor', 'companion'].forEach(function(slot){
+      var id = it.equipped[slot];
+      equipped[slot] = (id && ITEMS[id] && ITEMS[id].slot === slot && owned.indexOf(id) >= 0) ? id : null;
+    });
+  }
+}
+function saveSettings(){ saveJSON(SAVE_KEYS.settings, settings); }
+function saveProgress(){ saveJSON(SAVE_KEYS.progress, progress); }
+function saveItems(){ saveJSON(SAVE_KEYS.items, { owned: owned, equipped: equipped }); }
+
+/* ===== v1.7: camera presets (rig parameters only — the loop's camera
+   section reads the selected preset every frame) ===== */
+var CAM_PRESETS = {
+  standard: { y: 7.2,  back: 10.5, lookY: 1.1, lookAhead: 9,  xOff: 0    },
+  low:      { y: 3.6,  back: 8.0,  lookY: 1.4, lookAhead: 11, xOff: 0    },
+  high:     { y: 11.5, back: 13.0, lookY: 0.8, lookAhead: 10, xOff: 0    },
+  close:    { y: 3.0,  back: 5.0,  lookY: 1.5, lookAhead: 12, xOff: 1.15 }
+};
+if (!CAM_PRESETS[settings.cam]) settings.cam = 'standard';
+
+/* ===== v1.7: item table (ONE place) — slots 武器 weapon / 防具 armor /
+   お供 companion. Effects are implemented in shoot()/hit resolution,
+   damagePlayer(), resetState() (vest) and the main loop (companions).
+   Weapons and armor are performance-only: equipping them NEVER changes
+   the protagonist's frames (confirmed decision — no Rei item art will
+   be made). Companions DO get in-game billboards (see below). ===== */
+var ITEMS = {
+  smg:      { slot: 'weapon',    name: 'スコーピオン',     desc: 'ロックオン射撃が2ヒット（0.12秒間隔、各ヒット個別に回避判定）' },
+  rifle:    { slot: 'weapon',    name: 'ロングショット',   desc: '1ヒット2ダメージ。発射後0.8秒は次の射撃不可' },
+  shotgun:  { slot: 'weapon',    name: 'ブレイカー',       desc: '命中時、対象の3.5m以内の他の敵にも1ダメージ（回避なし）' },
+  vest:     { slot: 'armor',     name: '防弾チョッキ',     desc: 'ラン開始時のライフ +1' },
+  vest2:    { slot: 'armor',     name: '防弾チョッキ・大', desc: 'ラン開始時のライフ +2' },
+  shield:   { slot: 'armor',     name: '防弾シールド',     desc: '敵の命中を20秒に1回自動で防ぐ（ロケットは防げない）' },
+  dog:      { slot: 'companion', name: '犬',               desc: '敵の発射・スナイパーの照準開始を0.4秒早く警告' },
+  hawk:     { slot: 'companion', name: '鷹',               desc: '15秒ごとに3秒間、全ての出現中の敵をマーキング' },
+  atkdrone: { slot: 'companion', name: '攻撃ドローン',     desc: '6秒ごとに最寄りの敵を自動攻撃（1ダメージ、回避あり）' },
+  shdrone:  { slot: 'companion', name: 'シールドドローン', desc: '敵の命中を25秒に1回自動で防ぐ（ロケットは防げない）' }
+};
+loadSave();
+function awardItem(id){
+  if (!ITEMS[id] || owned.indexOf(id) >= 0) return false;
+  owned.push(id); saveItems(); return true;
+}
+/* clear reward: the FIRST clear of stage 1 always awards the スコーピオン
+   (guaranteed first reward); later clears roll 60% for one unowned item */
+function rollReward(wasCleared){
+  if (curStage === 0 && !wasCleared && owned.indexOf('smg') < 0){ awardItem('smg'); return 'smg'; }
+  var unowned = Object.keys(ITEMS).filter(function(id){ return owned.indexOf(id) < 0; });
+  if (!unowned.length || Math.random() >= 0.6) return null;
+  var id = unowned[Math.floor(Math.random() * unowned.length)];
+  awardItem(id); return id;
+}
+
+function selectStage(i){
+  if (S.phase !== 'stage' || !STAGES[i].playable) return;
+  curStage = i;
+  document.getElementById('stage').classList.add('hidden');
+  startCutin();
+}
 function selectOutfit(i){
   curOutfit = i;
   if (S) S.outfit = i + 1;
   applyOutfitSprite();
   document.getElementById('outfit').classList.add('hidden');
-  startCutin();
+  document.getElementById('stage').classList.remove('hidden');
+  S.phase = 'stage';
 }
 document.querySelectorAll('.ocard').forEach(function(card){
   card.addEventListener('click', function(ev){
@@ -1281,13 +1739,16 @@ function tapToStart(){
     document.getElementById('start').classList.remove('hidden');
     S.phase = 'start';
   }
-  /* 'outfit' and 'cutin' phases: taps do nothing (outfit cards / timer drive the flow) */
+  /* 'outfit', 'stage' and 'cutin' phases: taps do nothing (cards / timer drive the flow) */
 }
 window.addEventListener('keydown', function(ev){
   if (ev.repeat) return;
   var k = ev.key;
+  if (settingsOpen){ if (k === 'Escape') closeSettings(); return; } // v1.7
+  if (equipOpen){ if (k === 'Escape') closeEquip(); return; }       // v1.7
   if (S.phase !== 'play'){
     if (S.phase === 'outfit' && k >= '1' && k <= '4'){ selectOutfit(parseInt(k, 10) - 1); return; }
+    if (S.phase === 'stage' && k === '1'){ selectStage(0); return; }
     if (k===' ' || k==='Enter') tapToStart();
     return;
   }
@@ -1297,13 +1758,222 @@ window.addEventListener('keydown', function(ev){
   else if (k==='ArrowRight' || k==='d' || k==='D') onSwipe('right');
 });
 
+/* ===== v1.7: recon drone / settings / equipment UI ===== */
+var settingsOpen = false, equipOpen = false;
+var droneForceRoll = null; // verification hook: forces the next shot-down roll value
+function droneActive(){ return !!(S && S.droneUntilMs && performance.now() < S.droneUntilMs); }
+function endDrone(){ if (S) S.droneUntilMs = 0; }
+function refreshDroneBtn(){
+  var b = document.getElementById('dronebtn');
+  if (!b) return;
+  var down = !!(S && S.droneDowned);
+  b.textContent = down ? '偵察ドローン×' : '偵察ドローン';
+  b.classList.toggle('down', down);
+}
+function pressDrone(){
+  if (S.phase !== 'play' || settingsOpen || equipOpen) return;
+  if (droneActive()){ endDrone(); return; }
+  if (S.droneDowned) return;
+  S.droneUses++;
+  var roll = (droneForceRoll !== null) ? droneForceRoll : Math.random();
+  droneForceRoll = null;
+  if (roll < 0.12){
+    S.droneDowned = true; refreshDroneBtn();
+    showMsg('偵察ドローン撃墜！', false, 1100);
+    return;
+  }
+  S.droneUntilMs = performance.now() + 4000; // ~4 s, action paused (main loop)
+  showMsg('偵察ドローンで確認中', true, 800);
+}
+/* keep menu/button gestures from ever reaching the game's swipe layer */
+function isolate(el){
+  if (!el) return;
+  ['mousedown', 'mouseup', 'touchstart', 'touchend', 'click'].forEach(function(t){
+    el.addEventListener(t, function(ev){ ev.stopPropagation(); }, {passive: true});
+  });
+}
+var droneBtnEl = document.getElementById('dronebtn');
+isolate(droneBtnEl);
+droneBtnEl.addEventListener('click', function(){ pressDrone(); });
+
+/* --- settings --- */
+var initArmed = false;
+function refreshSettingsUI(){
+  document.querySelectorAll('.cambtn').forEach(function(b){
+    b.classList.toggle('sel', b.getAttribute('data-cam') === settings.cam);
+  });
+  var ib = document.getElementById('initbtn');
+  initArmed = false;
+  ib.textContent = 'データ初期化'; ib.classList.remove('armed');
+}
+function openSettings(){ settingsOpen = true; refreshSettingsUI(); document.getElementById('settings').classList.remove('hidden'); }
+function closeSettings(){ settingsOpen = false; document.getElementById('settings').classList.add('hidden'); }
+document.querySelectorAll('.cambtn').forEach(function(b){
+  b.addEventListener('click', function(ev){
+    ev.stopPropagation();
+    settings.cam = b.getAttribute('data-cam'); saveSettings(); refreshSettingsUI();
+  });
+});
+document.getElementById('settingsclose').addEventListener('click', function(ev){ ev.stopPropagation(); closeSettings(); });
+document.getElementById('stagebtn').addEventListener('click', function(ev){ ev.stopPropagation(); gotoStageSelect(); });
+document.getElementById('initbtn').addEventListener('click', function(ev){
+  ev.stopPropagation();
+  if (!initArmed){
+    initArmed = true;
+    this.textContent = '本当に初期化しますか？'; this.classList.add('armed');
+    return;
+  }
+  initData();
+});
+function gotoStageSelect(){
+  closeSettings();
+  ['clear', 'over', 'startcut', 'outfit', 'start', 'equip'].forEach(function(id){
+    document.getElementById(id).classList.add('hidden');
+  });
+  equipOpen = false;
+  hideLaser(); resetState();
+  buildStageCards();
+  document.getElementById('stage').classList.remove('hidden');
+  S.phase = 'stage';
+}
+function initData(){
+  Object.keys(SAVE_KEYS).forEach(function(k){ try { localStorage.removeItem(SAVE_KEYS[k]); } catch (e) {} });
+  settings = { cam: 'standard' };
+  progress = freshProgress();
+  owned = []; equipped = { weapon: null, armor: null, companion: null };
+  closeSettings(); equipOpen = false;
+  ['clear', 'over', 'startcut', 'outfit', 'stage', 'equip'].forEach(function(id){
+    document.getElementById(id).classList.add('hidden');
+  });
+  hideLaser(); resetState();
+  buildStageCards();
+  document.getElementById('start').classList.remove('hidden');
+  S.phase = 'start';
+}
+var gearEl = document.getElementById('gearbtn');
+isolate(gearEl);
+gearEl.addEventListener('click', function(){ if (settingsOpen) closeSettings(); else openSettings(); });
+isolate(document.getElementById('settings'));
+isolate(document.getElementById('equip'));
+
+/* --- equipment screen --- */
+var SLOT_LABELS = [['weapon', '武器'], ['armor', '防具'], ['companion', 'お供']];
+function openEquip(){ equipOpen = true; buildEquipScreen(); document.getElementById('equip').classList.remove('hidden'); }
+function closeEquip(){ equipOpen = false; document.getElementById('equip').classList.add('hidden'); }
+document.getElementById('equipopen').addEventListener('click', function(ev){ ev.stopPropagation(); openEquip(); });
+document.getElementById('equipclose').addEventListener('click', function(ev){ ev.stopPropagation(); closeEquip(); });
+function toggleEquip(slot, id){
+  if (id === null || equipped[slot] === id) equipped[slot] = null;
+  else equipped[slot] = id;
+  saveItems(); buildEquipScreen();
+}
+function eqRow(slot, id){
+  var d = document.createElement('div');
+  d.className = 'eqrow' + (equipped[slot] === id ? ' sel' : '');
+  d.setAttribute('data-slot', slot);
+  d.setAttribute('data-item', id === null ? '' : id);
+  if (id === null){
+    d.innerHTML = '<span class="eqmeta"><span class="eqname">なし</span><span class="eqdesc">装備しない</span></span>' +
+                  (equipped[slot] === null ? '<span class="eqtag">装備中</span>' : '');
+  } else {
+    var it = ITEMS[id];
+    /* art contract: assets/items/<id>-select.png; while the file is
+       absent the styled name plate underneath shows through */
+    d.innerHTML = '<span class="eqart"><span class="eqplate">' + it.name + '</span>' +
+                  '<img src="assets/items/' + id + '-select.png" alt="" onload="this.previousElementSibling.style.visibility=\'hidden\'" onerror="this.remove()"></span>' +
+                  '<span class="eqmeta"><span class="eqname">' + it.name + '</span><span class="eqdesc">' + it.desc + '</span></span>' +
+                  (equipped[slot] === id ? '<span class="eqtag">装備中</span>' : '');
+  }
+  d.addEventListener('click', function(ev){ ev.stopPropagation(); toggleEquip(slot, id); });
+  return d;
+}
+function buildEquipScreen(){
+  var wrap = document.getElementById('equipslots');
+  wrap.innerHTML = '';
+  SLOT_LABELS.forEach(function(pair){
+    var slot = pair[0];
+    var h = document.createElement('div');
+    h.className = 'eqslot'; h.textContent = pair[1];
+    wrap.appendChild(h);
+    wrap.appendChild(eqRow(slot, null));
+    var mine = owned.filter(function(id){ return ITEMS[id].slot === slot; });
+    mine.forEach(function(id){ wrap.appendChild(eqRow(slot, id)); });
+    if (!mine.length){
+      var n = document.createElement('div');
+      n.className = 'eqnone'; n.textContent = '（未所持 — ステージクリアで入手）';
+      wrap.appendChild(n);
+    }
+  });
+}
+
+/* ===== v1.7: companion visuals — the equipped companion travels with
+   the player as a billboard (art contract: assets/items/<id>-game.png,
+   the back-view in-game set from the art brief). A missing or
+   unloadable file skips the visual silently; the companion's EFFECTS
+   apply regardless. Sizing uses each texture's own aspect once loaded
+   (delivered: dog 350x650 = 0.538, hawk 1127x462 = 2.439 wide,
+   shdrone 768x679 = 1.131; atkdrone art still pending).
+   Weapons and armor NEVER change the protagonist's art — performance
+   only (confirmed decision; no Rei item frames will be made). ===== */
+var COMPANION_VIS = {
+  dog:      { h: 0.75 },  // on the ground at the player's side
+  hawk:     { w: 2.0 },   // wide sprite: sized by width, height follows the aspect
+  atkdrone: { h: 0.55 },  // shoulder-height hover
+  shdrone:  { h: 0.55 }
+};
+var compTex = {}; // id -> {tex, ok, aspect}
+['dog', 'hawk', 'atkdrone', 'shdrone'].forEach(function(id){
+  var rec = { tex: null, ok: false, aspect: 1 };
+  compTex[id] = rec;
+  rec.tex = texLoader.load('assets/items/' + id + '-game.png', function(loaded){
+    if (loaded.image){ rec.aspect = loaded.image.width / loaded.image.height; rec.ok = true; }
+  }, undefined, function(){ rec.ok = false; /* missing art: skip the visual silently */ });
+  rec.tex.encoding = THREE.sRGBEncoding;
+});
+var compSprite = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true }));
+compSprite.visible = false; scene.add(compSprite);
+var compShownId = null, compX = 0, compZ = 0; // dog follow position (slight lag)
+function updateCompanionVisual(dt){
+  var id = equipped.companion;
+  var rec = id ? compTex[id] : null;
+  if (!id || !rec || !rec.ok || S.phase !== 'play'){
+    compSprite.visible = false; compShownId = null; return;
+  }
+  if (compShownId !== id){
+    compShownId = id;
+    compSprite.material.map = rec.tex; compSprite.material.needsUpdate = true;
+    compX = S.px + 0.9; compZ = S.pz; // seed the dog's follow position (no streak)
+  }
+  var spec = COMPANION_VIS[id];
+  var h = spec.h || (spec.w / rec.aspect);
+  compSprite.scale.set(h * rec.aspect, h, 1);
+  if (id === 'dog'){
+    var k = Math.min(1, dt * 7);
+    compX += ((S.px + 0.9) - compX) * k;
+    compZ += ((S.pz - 0.1) - compZ) * k;
+    var movingNow = S.mode !== 'stop' || !!S.coverAnim || !!S.backstepAnim || !!S.laneAnim;
+    var bob = movingNow ? Math.abs(Math.sin(S.walkClock * Math.PI)) * 0.05 : 0;
+    compSprite.position.set(compX, h / 2 + bob, compZ);
+  } else if (id === 'hawk'){
+    var a = S.time * 0.9; // slow circle above and slightly ahead
+    compSprite.position.set(S.px + Math.cos(a) * 1.2, 2.6 + Math.sin(S.time * 1.7) * 0.12, S.pz + 0.5 + Math.sin(a) * 1.2);
+  } else { /* drones: gentle hover at shoulder height beside the player */
+    compSprite.position.set(S.px - 0.9, 1.6 + Math.sin(S.time * 2.4) * 0.07, S.pz + 0.1);
+  }
+  compSprite.visible = true;
+}
+
 /* ===== Main loop ===== */
 var lastT = performance.now();
 function loop(){
   requestAnimationFrame(loop);
   var now = performance.now();
   var dt = Math.min(0.05, (now - lastT)/1000); lastT = now;
-  if (S.phase === 'play'){
+  /* v1.7: recon drone — while it is up the action is PAUSED (game time,
+     enemies and timers frozen); the window is real-time (~4 s) */
+  if (S.droneUntilMs && now >= S.droneUntilMs) S.droneUntilMs = 0;
+  var droneOn = !!S.droneUntilMs;
+  if (S.phase === 'play' && !droneOn){
     S.time += dt;
     /* movement (v1.2: every positional change passes resolveCollision,
        so the player can never sink into a cover object) */
@@ -1409,14 +2079,49 @@ function loop(){
     playerSprite.scale.set(sh * aspect, sh, 1);
     playerSprite.position.set(S.px, sh / 2 + bob, S.pz + (S.time < S.leanUntil ? 0.12 : 0));
     playerShadow.position.set(S.px, 0.02, S.pz);
+    /* v1.7: SMG follow-up hits */
+    for (var phi = pendingHits.length - 1; phi >= 0; phi--){
+      if (S.time >= pendingHits[phi].at){
+        var ph = pendingHits.splice(phi, 1)[0];
+        if (ph.target.alive) resolveShotHit(ph.target, ph.dir, null);
+      }
+    }
+    /* v1.7 companions: hawk marking windows + attack drone */
+    if (equipped.companion === 'hawk' && S.time >= S.hawkNextAt){
+      S.hawkMarkUntil = S.time + 3; S.hawkNextAt = S.time + 15;
+    }
+    if (equipped.companion === 'atkdrone' && S.time >= S.atkNextAt){
+      S.atkNextAt = S.time + 6;
+      var at = null, ad = 1e9;
+      enemies.forEach(function(e){
+        if (e.alive && e.active){ var d = Math.abs(e.z - S.pz); if (d < ad){ ad = d; at = e; } }
+      });
+      if (at){
+        addTracer(new THREE.Vector3(S.px, 3.4, S.pz), new THREE.Vector3(at.x, 1.4, at.z), 0x7dff8a, 0.12);
+        if (at.def.dodge > 0 && S.time >= at.dodgeUntil && Math.random() < at.def.dodge){
+          at.dodgeUntil = S.time + P.DODGE_GUARANTEE_S; at.state = 'dodging'; at.stateT = 0;
+          showMsg('DODGED!', true, 400);
+        } else applyHit(at, 1);
+      }
+    }
     /* enemies */
-    enemies.forEach(function(e){ enemyUpdate(e, dt); });
+    enemies.forEach(function(e){ if (!e.alive && e.deathT > 0) updateDeath(e, dt); else enemyUpdate(e, dt); });
     /* goal */
     if (S.pz >= P.STREET_LEN){
       S.phase = 'clear';
+      /* v1.7: progression (clear unlocks the next stage; cleared stages
+         stay replayable) + the clear reward roll */
+      var wasCleared = !!progress.cleared[curStage];
+      progress.cleared[curStage] = true;
+      if (curStage + 2 > progress.unlocked) progress.unlocked = Math.min(STAGES.length, curStage + 2);
+      saveProgress();
+      var reward = rollReward(wasCleared);
+      S.lastReward = reward;
+      buildStageCards();
       document.getElementById('clearimg').src = OUTFITS[curOutfit].clear; // v1: stage-clear look-back cut-in
       document.getElementById('clearinfo').innerHTML =
-        'ゴール到達！<br>撃破 ' + S.kills + ' / ' + P.TOTAL_ENEMIES + '（全滅は任意目標）<br>残りライフ ' + S.life;
+        'ゴール到達！<br>撃破 ' + S.kills + ' / ' + P.TOTAL_ENEMIES + '（全滅は任意目標）<br>残りライフ ' + S.life +
+        (reward ? '<br>報酬：' + ITEMS[reward].name + 'を入手！' : '');
       document.getElementById('clear').classList.remove('hidden');
       hideLaser();
     }
@@ -1436,12 +2141,31 @@ function loop(){
     }
   }
   marker.rotation.z += dt*3; marker.rotation.x = Math.PI/2.2;
-  /* camera: behind & above, looking down the street (HD-2D feel) */
-  var camTX = S.px * 0.55, camTZ = S.pz - 10.5;
-  camera.position.x += (camTX - camera.position.x) * Math.min(1, dt*5);
-  camera.position.y += (7.2 - camera.position.y) * Math.min(1, dt*5);
-  camera.position.z += (camTZ - camera.position.z) * Math.min(1, dt*7);
-  camera.lookAt(S.px*0.6, 1.1, S.pz + 9);
+  /* camera: behind & above, looking down the street (HD-2D feel).
+     v1.7: the rig follows the selected camera preset; the recon drone
+     overrides it with a high look-down view of the course ahead. */
+  if (droneOn){
+    camera.position.x += (S.px * 0.3 - camera.position.x) * Math.min(1, dt*3);
+    camera.position.y += (26 - camera.position.y) * Math.min(1, dt*3);
+    camera.position.z += (S.pz + 4 - camera.position.z) * Math.min(1, dt*3);
+    camera.lookAt(S.px * 0.3, 0, S.pz + 30);
+  } else {
+    var cp = CAM_PRESETS[settings.cam] || CAM_PRESETS.standard;
+    var camTX = S.px * 0.55 + cp.xOff, camTZ = S.pz - cp.back;
+    camera.position.x += (camTX - camera.position.x) * Math.min(1, dt*5);
+    camera.position.y += (cp.y - camera.position.y) * Math.min(1, dt*5);
+    camera.position.z += (camTZ - camera.position.z) * Math.min(1, dt*7);
+    camera.lookAt(S.px * 0.6 + cp.xOff * 0.6, cp.lookY, S.pz + cp.lookAhead);
+  }
+  /* v1.7: enemy markers — visible in the drone view, and during the
+     hawk's marking windows in normal play */
+  enemies.forEach(function(e){
+    if (!e.marker) return;
+    var vis = e.active && e.alive && (droneOn || (S.phase === 'play' && S.time < (S.hawkMarkUntil || 0)));
+    e.marker.visible = vis;
+    if (vis) e.marker.position.set(e.mesh.position.x, 0, e.z);
+  });
+  updateCompanionVisual(dt); // v1.7: the equipped companion travels with the player
   renderer.render(scene, camera);
 }
 
@@ -1458,9 +2182,28 @@ window.RLA = {
     flips: flipCount, rocketActive: rockets.length > 0,
     obstacles: obstacles.map(function(o){ return {x:o.cx, z:o.cz, hx:o.hx, hz:o.hz, rot:o.rot,
       kind:o.kind, type:o.type, cover:o.cover, flipped:o.flipped}; }),
-    enemies: enemies.map(function(e){return {kind:e.kind, side:e.side, z:e.z, alive:e.alive, active:e.active, state:e.state};}),
+    enemies: enemies.map(function(e){return {kind:e.kind, side:e.side, z:e.z, alive:e.alive, active:e.active, state:e.state,
+      hp:e.hp, maxHp:e.maxHp, tex:e.texKey, shotsFired:e.shotsFired, spriteH:e.sprite.scale.y};}),
+    rocketSource: lastRocketKind,
+    stageList: STAGES.map(function(s){ return {name:s.name, playable:s.playable}; }),
     /* v1.5 verification surface */
     shootPose: S.time < S.shootPoseUntil,
+    /* v1.7 verification surface */
+    time: S.time, maxLife: S.maxLife || P.LIFE,
+    camPreset: settings.cam,
+    camRigY: (CAM_PRESETS[settings.cam] || CAM_PRESETS.standard).y,
+    camRigBack: (CAM_PRESETS[settings.cam] || CAM_PRESETS.standard).back,
+    camPosY: camera.position.y,
+    items: { owned: owned.slice(), equipped: { weapon: equipped.weapon, armor: equipped.armor, companion: equipped.companion } },
+    progress: { cleared: progress.cleared.slice(), unlocked: progress.unlocked },
+    lastReward: S.lastReward || null,
+    drone: { active: droneActive(), downed: !!S.droneDowned, uses: S.droneUses || 0 },
+    markers: enemies.filter(function(e){ return e.marker && e.marker.visible; }).length,
+    shieldBlocks: S.shieldBlocks || 0, shDroneBlocks: S.shDroneBlocks || 0,
+    companionVis: { id: compShownId, visible: compSprite.visible,
+      x: compSprite.position.x, y: compSprite.position.y, z: compSprite.position.z,
+      texOk: !!(equipped.companion && compTex[equipped.companion] && compTex[equipped.companion].ok) },
+    settingsOpen: settingsOpen, equipOpen: equipOpen,
     /* v1.3 verification surface */
     fxCount: fx.length,
     lineCount: scene.children.filter(function(c){ return c.isLine; }).length,
@@ -1500,11 +2243,32 @@ window.RLA = {
     return true;
   },
   selectOutfit: function(i){ if (S.phase==='outfit') selectOutfit(i); },
+  selectStage: function(i){ if (S.phase==='stage') selectStage(i); },
+  /* v1.7 verification / UI hooks */
+  setCamPreset: function(name){
+    if (!CAM_PRESETS[name]) return false;
+    settings.cam = name; saveSettings(); refreshSettingsUI(); return true;
+  },
+  openSettings: openSettings, closeSettings: closeSettings,
+  openEquip: openEquip, closeEquip: closeEquip,
+  equipItem: function(id){
+    if (!ITEMS[id] || owned.indexOf(id) < 0) return false;
+    equipped[ITEMS[id].slot] = id; saveItems(); return true;
+  },
+  unequipSlot: function(slot){ if (slot in equipped){ equipped[slot] = null; saveItems(); } },
+  debugAward: function(id){ return awardItem(id); }, // verification-only: grants an item without the reward roll
+  pressDrone: pressDrone,
+  setDroneRoll: function(v){ droneForceRoll = v; },
+  debugHit: function(rocket){ damagePlayer(!!rocket); }, // verification-only: one enemy hit through the production damage path
+  initData: initData,
+  /* v1.6: fire one lock-on shot through the production shoot() */
+  shoot: function(dir){ if (S.phase==='play') shoot(dir); },
   start: function(){ if (S.phase==='start') tapToStart(); },
   setGod: function(v){ godMode = !!v; }
 };
 
 fit();
+buildStageCards(); // v1.7: stage cards are built by a function now (progress-aware)
 resetState();
 S.phase = 'start'; // v1.1: logo start screen comes first
 loop();
