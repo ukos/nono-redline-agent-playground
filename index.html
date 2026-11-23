@@ -3,8 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>REDLINE AGENT — prototype v1</title>
-<link rel="icon" href="logo.jpg">
+<title>REDLINE AGENT</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="REDLINE AGENT">
+<meta name="theme-color" content="#000000">
 <style>
   html,body{margin:0;padding:0;background:#05070c;overflow:hidden;height:100%;font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
   #app{position:fixed;left:0;top:0;overflow:hidden;background:#05070c}
@@ -41,6 +47,11 @@
   .ocard:active{background:rgba(255,210,87,.18);border-color:#ffd257}
   .ocard img{height:148px;width:auto;border-radius:0;box-shadow:none}
   .oname{margin-top:8px;font-size:12.5px;letter-spacing:1px;color:#e8ecf4;line-height:1.5}
+  /* start screen (v1.1): logo on black, blends seamlessly */
+  #start{background:#000;justify-content:center;padding:calc(12px + env(safe-area-inset-top)) 0 calc(12px + env(safe-area-inset-bottom)) 0;z-index:6}
+  #start img{width:min(92%,560px);height:auto;border-radius:0;box-shadow:none}
+  .starttap{margin-top:30px;margin-bottom:56px;font-size:17px;letter-spacing:3px;color:#ffe9c9;animation:blink 1.4s infinite}
+  .version{position:absolute;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));font-size:11px;letter-spacing:1px;color:#ffe9c9}
   /* cut-ins (v1) */
   #startcut{z-index:8;background:rgba(3,5,9,.90)}
   #startcut img{height:min(58vh,470px);width:auto;border-radius:0;box-shadow:none}
@@ -57,10 +68,15 @@
     </div>
     <div id="state"></div>
     <div id="msg"></div>
-    <div id="help"><b>↑</b> 前進　<b>↓</b> 停止／もう一度↓ 後退<br>移動中に <b>←→</b> 物陰へ　<b>←←／→→</b> ロックオン射撃</div>
+    <div id="help"><b>↑</b> 前進　<b>↓</b> 停止／もう一度↓ 後退<br>移動中に <b>←→</b> 物陰へ　<b>←←／→→</b> ロックオン射撃<br><b>↑↑</b> ダッシュ　<b>↓↓</b> バックステップ</div>
     <div id="dmg"></div>
   </div>
-  <div id="outfit" class="overlay">
+  <div id="start" class="overlay">
+    <img src="logo.jpg" alt="REDLINE AGENT">
+    <div class="starttap">タップではじめる</div>
+    <div class="version">REDLINE AGENT prototype v1.1</div>
+  </div>
+  <div id="outfit" class="overlay hidden">
     <div class="otitle">AGENT OUTFIT — 衣装選択</div>
     <div class="ogrid">
       <div class="ocard" data-outfit="0"><img src="assets/rei-outfits/frames/o1-idle.png" alt="英国紳士"><div class="oname">1. 英国紳士<br>＋ライフル</div></div>
@@ -69,11 +85,6 @@
       <div class="ocard" data-outfit="3"><img src="assets/rei-outfits/frames/o4-idle.png" alt="中世の狩人"><div class="oname">4. 中世の狩人<br>＋弓</div></div>
     </div>
     <div class="sub">主人公：レイ（タップで選択）</div>
-  </div>
-  <div id="title" class="overlay hidden">
-    <img src="logo.jpg" alt="REDLINE AGENT">
-    <div class="tap">タップではじめる</div>
-    <div class="sub">試作 v1（レイ登場・敵など絵は仮素材）<br>スワイプだけで進む・隠れる・撃つ</div>
   </div>
   <div id="startcut" class="overlay hidden">
     <img id="startimg" src="assets/rei-outfits/frames/o1-start.png" alt="作戦開始">
@@ -110,6 +121,10 @@ var P = {
   WALK_SPEED: 2.2,        // m/s forward  (200 / 2.2 = 90.9 s)
   BACK_SPEED: 1.4,        // m/s backward (placeholder tuning)
   DOUBLE_MS: 350,         // A-scheme: 2nd same-dir swipe within 350 ms -> shot from cover
+  DASH_SPEED: 4.8,        // v1.1: double-up dash, ~2.2x walk speed
+  DASH_S: 0.7,            // v1.1: dash duration (s)
+  BACKSTEP_DIST: 2.0,     // v1.1: double-down backstep distance (m)
+  BACKSTEP_S: 0.25,       // v1.1: backstep duration (s)
   DODGE_RATE: 0.30,       // normal enemy dodge rate
   DODGE_GUARANTEE_S: 0.8, // after a dodge, hits are guaranteed for 0.8 s
   SNIPER_WARN_S: 1.2,     // red line warning time before sniper fires
@@ -147,18 +162,53 @@ var sun = new THREE.DirectionalLight(0xffd9a0, 0.85); sun.position.set(-18, 30, 
 function asphaltTexture(){
   var c = document.createElement('canvas'); c.width=256; c.height=256;
   var g = c.getContext('2d');
-  g.fillStyle='#23262c'; g.fillRect(0,0,256,256);
-  for (var i=0;i<900;i++){ g.fillStyle='rgba(255,255,255,'+(Math.random()*0.05)+')'; g.fillRect(Math.random()*256, Math.random()*256, 2, 2); }
+  g.fillStyle='#22252b'; g.fillRect(0,0,256,256);
+  for (var i=0;i<1500;i++){ var v=Math.random(); g.fillStyle = v<0.5 ? 'rgba(255,255,255,'+(Math.random()*0.055)+')' : 'rgba(0,0,0,'+(Math.random()*0.16)+')'; g.fillRect(Math.random()*256, Math.random()*256, 2, 2); }
+  for (var j=0;j<26;j++){ g.fillStyle='rgba(0,0,0,'+(0.03+Math.random()*0.05)+')'; g.fillRect(Math.random()*256, Math.random()*256, 14+Math.random()*30, 5+Math.random()*10); } // patch stains
+  g.fillStyle='rgba(200,205,214,0.85)'; g.fillRect(6, 0, 4, 256); g.fillRect(246, 0, 4, 256); // edge lines
   g.fillStyle='#c8cdd6'; g.fillRect(124, 8, 8, 104); // centre dash segment
   var t = new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(1, P.STREET_LEN/16); return t;
 }
 var road = new THREE.Mesh(new THREE.PlaneGeometry(12, P.STREET_LEN+80), new THREE.MeshLambertMaterial({map:asphaltTexture()}));
 road.rotation.x = -Math.PI/2; road.position.set(0, 0, P.STREET_LEN/2 - 20); scene.add(road);
-var walkMat = new THREE.MeshLambertMaterial({color:0x3c4149});
+/* sidewalks: slightly raised lighter strips (boxes, so no z-fighting with the road) */
+function sidewalkTexture(){
+  var c = document.createElement('canvas'); c.width=128; c.height=128;
+  var g = c.getContext('2d');
+  g.fillStyle='#454b54'; g.fillRect(0,0,128,128);
+  for (var i=0;i<500;i++){ g.fillStyle='rgba(255,255,255,'+(Math.random()*0.05)+')'; g.fillRect(Math.random()*128, Math.random()*128, 2, 2); }
+  g.fillStyle='rgba(0,0,0,0.35)'; g.fillRect(0, 62, 128, 3); g.fillRect(62, 0, 3, 128); // slab seams
+  var t = new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(1, P.STREET_LEN/8); return t;
+}
+var walkMat = new THREE.MeshLambertMaterial({map:sidewalkTexture()});
 [-7.5, 7.5].forEach(function(x){
-  var w = new THREE.Mesh(new THREE.PlaneGeometry(3, P.STREET_LEN+80), walkMat);
-  w.rotation.x = -Math.PI/2; w.position.set(x, 0.01, P.STREET_LEN/2 - 20); scene.add(w);
+  var w = new THREE.Mesh(new THREE.BoxGeometry(3, 0.12, P.STREET_LEN+80), walkMat);
+  w.position.set(x, 0.06, P.STREET_LEN/2 - 20); scene.add(w);
 });
+/* streetlights: pole + emissive head + fake glow sprite (no extra PointLights, for mobile perf) */
+function glowSpriteTexture(){
+  var c = document.createElement('canvas'); c.width=128; c.height=128;
+  var g = c.getContext('2d');
+  var gr = g.createRadialGradient(64,64,2, 64,64,62);
+  gr.addColorStop(0,'rgba(255,214,150,0.85)'); gr.addColorStop(0.35,'rgba(255,180,100,0.28)'); gr.addColorStop(1,'rgba(255,170,90,0)');
+  g.fillStyle=gr; g.fillRect(0,0,128,128);
+  return new THREE.CanvasTexture(c);
+}
+var lampGlowTex = glowSpriteTexture();
+(function streetlights(){
+  var poleMat = new THREE.MeshLambertMaterial({color:0x232830});
+  var headMat = new THREE.MeshBasicMaterial({color:0xffd9a0});
+  for (var z=2, i=0; z<P.STREET_LEN; z+=21, i++){
+    var side = (i%2===0) ? -1 : 1, x = side*6.4;
+    var grp = new THREE.Group();
+    var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 4.4, 6), poleMat); pole.position.y = 2.2; grp.add(pole);
+    var arm = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.07, 0.07), poleMat); arm.position.set(-side*0.5, 4.35, 0); grp.add(arm);
+    var head = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.1, 0.2), headMat); head.position.set(-side*1.0, 4.3, 0); grp.add(head);
+    var spr = new THREE.Sprite(new THREE.SpriteMaterial({map:lampGlowTex, transparent:true, opacity:0.8, depthWrite:false}));
+    spr.scale.set(3.4, 3.4, 1); spr.position.set(-side*1.0, 4.3, 0); grp.add(spr);
+    grp.position.set(x, 0.12, z); scene.add(grp);
+  }
+})();
 /* dawn glow at the far end */
 var glow = new THREE.Mesh(new THREE.PlaneGeometry(60, 26), new THREE.MeshBasicMaterial({color:0xff9a4d, fog:false, transparent:true, opacity:0.5}));
 glow.position.set(0, 10, P.STREET_LEN + 42); scene.add(glow);
@@ -166,47 +216,92 @@ glow.position.set(0, 10, P.STREET_LEN + 42); scene.add(glow);
 /* --- buildings (both sides, FIELD GOLF city-course style) --- */
 function buildingTexture(base, lit){
   var c = document.createElement('canvas'); c.width=128; c.height=256;
-  var g = c.getContext('2d'); g.fillStyle=base; g.fillRect(0,0,128,256);
+  var g = c.getContext('2d');
+  g.fillStyle=base; g.fillRect(0,0,128,256);
+  /* subtle vertical shading + grime at the base so the facade is not flat */
+  var grad = g.createLinearGradient(0,0,0,256);
+  grad.addColorStop(0,'rgba(255,255,255,0.06)'); grad.addColorStop(0.75,'rgba(0,0,0,0)'); grad.addColorStop(1,'rgba(0,0,0,0.30)');
+  g.fillStyle=grad; g.fillRect(0,0,128,256);
   for (var y=10; y<240; y+=22) for (var x=10; x<112; x+=22){
-    g.fillStyle = Math.random()<lit ? '#ffd98a' : '#10141d'; g.fillRect(x, y, 12, 14);
+    var r = Math.random();
+    if (r < lit){ g.fillStyle = Math.random()<0.72 ? '#ffd98a' : '#bcd8ff'; }        // lit: warm or cool
+    else if (r < lit + 0.10){ g.fillStyle = '#2c3a50'; }                            // dim glass reflection
+    else { g.fillStyle = '#0e1219'; }                                              // dark window
+    g.fillRect(x, y, 12, 14);
+    if (r < lit){ g.fillStyle='rgba(255,255,255,0.25)'; g.fillRect(x, y, 12, 3); }   // lit window top glint
   }
   return new THREE.CanvasTexture(c);
 }
-var bTexA = buildingTexture('#2c3648', 0.35), bTexB = buildingTexture('#232b3a', 0.22), bTexC = buildingTexture('#37445c', 0.45);
+var bTexes = [
+  buildingTexture('#252d3d', 0.30), buildingTexture('#2c3648', 0.38),
+  buildingTexture('#20262f', 0.20), buildingTexture('#37445c', 0.45),
+  buildingTexture('#2e2a33', 0.26), buildingTexture('#1f2a30', 0.34)
+];
 (function buildCity(){
-  var texes=[bTexA,bTexB,bTexC];
   for (var side=-1; side<=1; side+=2){
     var z=-24;
     while (z < P.STREET_LEN+30){
-      var h = 14 + Math.random()*22, d = 10 + Math.random()*8;
-      var m = new THREE.Mesh(new THREE.BoxGeometry(9, h, d),
-        new THREE.MeshLambertMaterial({map: texes[Math.floor(Math.random()*3)]}));
-      m.position.set(side*(11.5+Math.random()*1.5), h/2, z + d/2);
-      scene.add(m); z += d + 1.5;
+      var h = 13 + Math.random()*24, d = 10 + Math.random()*8, w = 8.5 + Math.random()*2.5;
+      var tex = bTexes[Math.floor(Math.random()*bTexes.length)];
+      var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({map: tex}));
+      var bx = side*(11.5+Math.random()*1.5);
+      m.position.set(bx, h/2, z + d/2);
+      scene.add(m);
+      /* roofline variation: a smaller penthouse block on some buildings */
+      if (Math.random() < 0.45){
+        var ph = 1.6 + Math.random()*1.8;
+        var top = new THREE.Mesh(new THREE.BoxGeometry(w*0.55, ph, d*0.5), new THREE.MeshLambertMaterial({map: tex}));
+        top.position.set(bx + (Math.random()-0.5)*1.2, h + ph/2, z + d/2 + (Math.random()-0.5)*1.5);
+        scene.add(top);
+      }
+      z += d + 1.5;
     }
   }
 })();
 
 /* --- cover objects: cars & street trees alternating left/right --- */
 var covers = []; // {x, z, kind, mesh}
+/* fake blob shadow (cheap grounding; no shadow maps) */
+function blobShadow(rx, rz, opacity){
+  var m = new THREE.Mesh(new THREE.CircleGeometry(1, 20),
+    new THREE.MeshBasicMaterial({color:0x000000, transparent:true, opacity:opacity, depthWrite:false}));
+  m.rotation.x = -Math.PI/2; m.scale.set(rx, rz, 1); m.position.y = 0.02;
+  return m;
+}
 function makeCar(x, z, color){
   var g = new THREE.Group();
-  var body = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.62, 4.3), new THREE.MeshLambertMaterial({color:color}));
+  var paint = new THREE.MeshStandardMaterial({color:color, metalness:0.55, roughness:0.38});
+  var body = new THREE.Mesh(new THREE.BoxGeometry(1.88, 0.55, 4.3), paint);
   body.position.y = 0.55; g.add(body);
-  var cab = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.55, 2.1), new THREE.MeshLambertMaterial({color:0x141a24}));
-  cab.position.set(0, 1.1, -0.2); g.add(cab);
-  var tl = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.16, 0.06), new THREE.MeshBasicMaterial({color:0xff2a30}));
-  tl.position.set(0, 0.62, -2.16); g.add(tl);
+  var shoulder = new THREE.Mesh(new THREE.BoxGeometry(1.78, 0.22, 3.4), paint); // rounded-ish upper body line
+  shoulder.position.y = 0.9; g.add(shoulder);
+  var cab = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.5, 1.95),
+    new THREE.MeshStandardMaterial({color:0x0d131c, metalness:0.85, roughness:0.16})); // dark glass cabin
+  cab.position.set(0, 1.22, -0.25); g.add(cab);
+  var wheelMat = new THREE.MeshStandardMaterial({color:0x0a0a0c, roughness:0.92, metalness:0.05});
+  var wheelGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.24, 12);
+  [[-0.86,1.35],[0.86,1.35],[-0.86,-1.35],[0.86,-1.35]].forEach(function(p){
+    var wh = new THREE.Mesh(wheelGeo, wheelMat);
+    wh.rotation.z = Math.PI/2; wh.position.set(p[0], 0.34, p[1]); g.add(wh);
+  });
+  var hl = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.13, 0.06), new THREE.MeshBasicMaterial({color:0xffedb5}));
+  hl.position.set(0, 0.66, 2.16); g.add(hl); // headlights (far side)
+  var tl = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.15, 0.06), new THREE.MeshBasicMaterial({color:0xff2a30}));
+  tl.position.set(0, 0.66, -2.16); g.add(tl); // taillights (player side)
+  var sh = blobShadow(1.25, 2.5, 0.32); g.add(sh);
   g.position.set(x, 0, z); scene.add(g); return g;
 }
 function makeTree(x, z){
   var g = new THREE.Group();
-  var trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 2.4, 6), new THREE.MeshLambertMaterial({color:0x4a3826}));
+  var trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.19, 2.4, 7), new THREE.MeshLambertMaterial({color:0x453322}));
   trunk.position.y = 1.2; g.add(trunk);
-  var fol = new THREE.Mesh(new THREE.SphereGeometry(1.25, 8, 6), new THREE.MeshLambertMaterial({color:0x2c5a34}));
-  fol.position.y = 3.1; g.add(fol);
-  var fol2 = new THREE.Mesh(new THREE.SphereGeometry(0.85, 8, 6), new THREE.MeshLambertMaterial({color:0x356b3e}));
-  fol2.position.set(0.5, 3.9, 0.3); g.add(fol2);
+  var greens = [0x24492a, 0x2c5a34, 0x1f4023, 0x356b3e];
+  var blobs = [[0,3.15,0,1.3],[0.62,3.8,0.25,0.88],[-0.58,3.7,-0.2,0.8],[0.1,4.25,-0.35,0.66],[-0.25,3.55,0.55,0.6]];
+  blobs.forEach(function(b, i){
+    var fol = new THREE.Mesh(new THREE.SphereGeometry(b[3], 9, 7), new THREE.MeshLambertMaterial({color:greens[i%greens.length]}));
+    fol.position.set(b[0], b[1], b[2]); fol.scale.y = 0.85; g.add(fol);
+  });
+  var sh = blobShadow(1.15, 1.15, 0.30); g.add(sh);
   g.position.set(x, 0, z); scene.add(g); return g;
 }
 (function placeCovers(){
@@ -244,6 +339,8 @@ function makeFigure(suit, accent){
   var tie = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 0.02), new THREE.MeshBasicMaterial({color:accent}));
   tie.position.set(0, 1.28, 0.17); g.add(tie);
   var head = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.38, 0.34), skin); head.position.y = 1.85; g.add(head);
+  var hair = new THREE.Mesh(new THREE.BoxGeometry(0.37, 0.13, 0.37), new THREE.MeshLambertMaterial({color:0x0b0b10}));
+  hair.position.y = 2.08; g.add(hair); // dark hair cap: slightly more agent-like silhouette
   var armR = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.62, 0.16), mat); armR.position.set(0.38, 1.3, 0.18); armR.rotation.x = -1.25; g.add(armR);
   var gun = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.12, 0.34), new THREE.MeshLambertMaterial({color:0x0a0a0c}));
   gun.position.set(0.38, 1.52, 0.5); g.add(gun);
@@ -285,6 +382,8 @@ var playerSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: idleTex[0], 
 playerSprite.scale.set(1.03, 2.05, 1);
 playerSprite.position.set(0, 2.05 / 2, 0);
 scene.add(playerSprite);
+var playerShadow = blobShadow(0.55, 0.55, 0.36); // v1.1: Rei had no shadow; blob shadow grounds her
+scene.add(playerShadow);
 var SPRITE_H = 2.05; // sprite height in metres (matches the old box figure's ~2.0 m)
 function spriteKeyNow(){
   if (curOutfit === 0 && playerSprite.material.map === walkTexA) return 'o1-walk-a';
@@ -300,7 +399,7 @@ function applyOutfitSprite(){
 var S;
 function resetState(){
   S = {
-    phase: 'title',            // title | play | clear | over
+    phase: 'start',            // start | outfit | cutin | play | clear | over
     mode: 'stop',              // stop | forward | back
     px: 0, pz: 0,              // player position (x,z)
     cover: null,               // {side, obj} while in cover
@@ -310,6 +409,9 @@ function resetState(){
     shotsFired: 0,
     invulnUntil: 0,
     lastSide: {left: -9999, right: -9999},
+    lastUp: -9999, lastDown: -9999,   // v1.1: double up/down detection (same 350 ms window)
+    dashUntil: -1,                    // v1.1: dash active while S.time < dashUntil
+    backstepAnim: null,               // v1.1: {fromZ, toZ, t} quick backward hop
     walkPhase: 0,
     time: 0,
     outfit: curOutfit + 1,   // v1: selected outfit (1-based, for HUD/verify)
@@ -323,6 +425,7 @@ function resetState(){
 var enemies = [];
 function makeEnemy(kind, x, z, side){
   var mesh = makeFigure(kind==='sniper' ? 0x2a1418 : 0x232830, kind==='sniper' ? 0xff2020 : 0x666e7d);
+  mesh.add(blobShadow(0.55, 0.55, 0.34)); // v1.1: ground the enemy figures
   mesh.position.set(x, 0, z); mesh.rotation.y = Math.PI; // face the player (back down the street)
   mesh.visible = false; scene.add(mesh);
   var e = {kind:kind, x:x, z:z, side:side, mesh:mesh, alive:true, active:false,
@@ -392,7 +495,9 @@ function updateHUD(){
   elLife.innerHTML = h;
   elKills.textContent = '撃破 ' + S.kills + ' / ' + P.TOTAL_ENEMIES;
   elProg.style.width = Math.min(100, S.pz / P.STREET_LEN * 100) + '%';
-  var st = S.cover ? '物陰（' + (S.cover.side==='left'?'左':'右') + '）' :
+  var st = S.backstepAnim ? 'バックステップ' :
+           (S.time < S.dashUntil && S.mode==='forward' && !S.cover) ? 'ダッシュ' :
+           S.cover ? '物陰（' + (S.cover.side==='left'?'左':'右') + '）' :
            S.mode==='forward' ? '前進中' : S.mode==='back' ? '後退中' : '停止';
   elState.innerHTML = '状態：<b>' + st + '</b>　残り ' + Math.max(0, Math.ceil(P.STREET_LEN - S.pz)) + 'm';
 }
@@ -402,9 +507,20 @@ function onSwipe(dir){
   if (S.phase !== 'play') return;
   var now = performance.now();
   if (dir === 'up'){
-    leaveCover(); S.mode = 'forward';
+    var wasUp = S.lastUp; S.lastUp = now;
+    leaveCover();
+    S.mode = 'forward';
+    if (now - wasUp <= P.DOUBLE_MS && !S.backstepAnim){ S.dashUntil = S.time + P.DASH_S; } // v1.1: double-up = dash
   } else if (dir === 'down'){
-    if (S.cover){ /* in cover: down leaves cover and stops */ leaveCover(); S.mode='stop'; }
+    var wasDown = S.lastDown; S.lastDown = now;
+    if (now - wasDown <= P.DOUBLE_MS && !S.backstepAnim){
+      /* v1.1: double-down = backstep (takes priority over the single-down behaviours).
+         A quick ~2 m hop backwards, then stop. No invincibility: leaving cover exposes the player. */
+      leaveCover();
+      S.backstepAnim = {fromZ: S.pz, toZ: Math.max(0, S.pz - P.BACKSTEP_DIST), t: 0};
+      S.mode = 'stop';
+    }
+    else if (S.cover){ /* in cover: down leaves cover and stops */ leaveCover(); S.mode='stop'; }
     else if (S.mode !== 'stop'){ S.mode = 'stop'; }
     else { S.mode = 'back'; }
   } else if (dir === 'left' || dir === 'right'){
@@ -584,27 +700,33 @@ function enemyFire(e){
 /* ===== Touch / mouse swipe ===== */
 var tsx=0, tsy=0, tst=0;
 app.addEventListener('touchstart', function(ev){ var t=ev.changedTouches[0]; tsx=t.clientX; tsy=t.clientY; tst=performance.now(); }, {passive:true});
+var lastTouchEndT = 0;
 app.addEventListener('touchend', function(ev){
   var t=ev.changedTouches[0];
+  lastTouchEndT = performance.now();
   handlePointerEnd(t.clientX-tsx, t.clientY-tsy);
 }, {passive:true});
 var msx=null, msy=null;
 app.addEventListener('mousedown', function(ev){ msx=ev.clientX; msy=ev.clientY; });
-app.addEventListener('mouseup', function(ev){ if (msx===null) return; handlePointerEnd(ev.clientX-msx, ev.clientY-msy); msx=null; });
+app.addEventListener('mouseup', function(ev){
+  if (msx===null) return;
+  var dx = ev.clientX - msx, dy = ev.clientY - msy; msx=null;
+  if (performance.now() - lastTouchEndT < 700) return; // v1.1: ignore the compat mouse event after a touch (double-advance)
+  handlePointerEnd(dx, dy);
+});
 function handlePointerEnd(dx, dy){
   if (S.phase !== 'play'){ tapToStart(); return; }
   if (Math.abs(dx) < 24 && Math.abs(dy) < 24) return; // tap: no action in play
   if (Math.abs(dx) > Math.abs(dy)) onSwipe(dx>0 ? 'right' : 'left');
   else onSwipe(dy<0 ? 'up' : 'down');
 }
-/* ===== v1 flow: outfit select -> title -> start cut-in -> play ===== */
+/* ===== v1.1 flow: start (logo) -> outfit select -> start cut-in -> play ===== */
 function selectOutfit(i){
   curOutfit = i;
   if (S) S.outfit = i + 1;
   applyOutfitSprite();
   document.getElementById('outfit').classList.add('hidden');
-  document.getElementById('title').classList.remove('hidden');
-  S.phase = 'title';
+  startCutin();
 }
 document.querySelectorAll('.ocard').forEach(function(card){
   card.addEventListener('click', function(ev){
@@ -627,14 +749,16 @@ function startCutin(){
   }, 1600);
 }
 function tapToStart(){
-  if (S.phase === 'title'){
-    document.getElementById('title').classList.add('hidden');
-    startCutin();
+  if (S.phase === 'start'){
+    document.getElementById('start').classList.add('hidden');
+    document.getElementById('outfit').classList.remove('hidden');
+    S.phase = 'outfit';
   } else if (S.phase === 'clear' || S.phase === 'over'){
     document.getElementById('clear').classList.add('hidden');
     document.getElementById('over').classList.add('hidden');
     hideLaser(); resetState();
-    startCutin();
+    document.getElementById('start').classList.remove('hidden');
+    S.phase = 'start';
   }
   /* 'outfit' and 'cutin' phases: taps do nothing (outfit cards / timer drive the flow) */
 }
@@ -661,8 +785,17 @@ function loop(){
   if (S.phase === 'play'){
     S.time += dt;
     /* movement */
-    if (!S.cover){
-      if (S.mode === 'forward') S.pz = Math.min(P.STREET_LEN + 2, S.pz + P.WALK_SPEED * dt);
+    if (S.backstepAnim){
+      /* v1.1 backstep: ~2 m hop over BACKSTEP_S with ease-out, then stopped */
+      var ba = S.backstepAnim; ba.t += dt / P.BACKSTEP_S;
+      var bk = Math.min(1, ba.t), be = 1 - (1 - bk) * (1 - bk);
+      S.pz = ba.fromZ + (ba.toZ - ba.fromZ) * be;
+      if (bk >= 1){ S.pz = ba.toZ; S.backstepAnim = null; S.mode = 'stop'; updateHUD(); }
+    } else if (!S.cover){
+      if (S.mode === 'forward'){
+        var spd = (S.time < S.dashUntil) ? P.DASH_SPEED : P.WALK_SPEED; // v1.1 dash burst
+        S.pz = Math.min(P.STREET_LEN + 2, S.pz + spd * dt);
+      }
       else if (S.mode === 'back') S.pz = Math.max(0, S.pz - P.BACK_SPEED * dt);
     }
     /* cover move animation */
@@ -676,7 +809,7 @@ function loop(){
       S.px += (0 - S.px) * Math.min(1, dt*6); // drift back to lane centre when exposed
     }
     /* walk animation (v1: sprite bob/pulse; outfit 1 alternates real back-view walk frames) */
-    var moving = (S.mode !== 'stop' && !S.cover) || !!S.coverAnim;
+    var moving = (S.mode !== 'stop' && !S.cover) || !!S.coverAnim || !!S.backstepAnim;
     if (moving) S.walkPhase += dt * 9; else S.walkPhase *= 0.8;
     playerMesh.position.set(S.px, 0, S.pz); // invisible anchor kept in sync
     var crouchTarget = (S.cover && !S.coverAnim) ? 0.82 : 1.0;
@@ -697,6 +830,7 @@ function loop(){
     var sh = SPRITE_H * S.spriteCrouch * pulse;
     playerSprite.scale.set(sh * aspect, sh, 1);
     playerSprite.position.set(S.px, sh / 2 + bob, S.pz + (S.time < S.leanUntil ? 0.12 : 0));
+    playerShadow.position.set(S.px, 0.02, S.pz);
     /* enemies */
     enemies.forEach(function(e){ enemyUpdate(e, dt); });
     /* goal */
@@ -730,18 +864,19 @@ function loop(){
 /* debug/verification hook */
 window.RLA = {
   get state(){ return {phase:S.phase, mode:S.mode, px:S.px, pz:S.pz, cover:S.cover?S.cover.side:null,
+    dashing: S.time < S.dashUntil && S.mode==='forward' && !S.cover, backstepping: !!S.backstepAnim,
     inCover: playerInCover(), life:S.life, kills:S.kills, shots:S.shotsFired,
     outfit: S.outfit, sprite: spriteKeyNow(),
     enemies: enemies.map(function(e){return {kind:e.kind, side:e.side, z:e.z, alive:e.alive, active:e.active, state:e.state};})}; },
   swipe: onSwipe,
   teleport: function(z){ S.pz = z; },
   selectOutfit: function(i){ if (S.phase==='outfit') selectOutfit(i); },
-  start: function(){ if (S.phase==='title') tapToStart(); }
+  start: function(){ if (S.phase==='start') tapToStart(); }
 };
 
 fit();
 resetState();
-S.phase = 'outfit'; // v1: outfit selection comes before the title
+S.phase = 'start'; // v1.1: logo start screen comes first
 loop();
 })();
 </script>
