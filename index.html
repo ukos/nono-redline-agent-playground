@@ -68,13 +68,13 @@
     </div>
     <div id="state"></div>
     <div id="msg"></div>
-    <div id="help"><b>↑</b> 前進　<b>↓</b> 停止／もう一度↓ 後退<br>移動中に <b>←→</b> 物陰へ　<b>←←／→→</b> ロックオン射撃<br><b>↑↑</b> ダッシュ　<b>↓↓</b> バックステップ</div>
+    <div id="help"><b>↑</b> 前進　<b>↓</b> 停止／もう一度↓ 後退<br><b>←→</b> 物陰へ（停止中も可）　<b>←←／→→</b> ロックオン射撃<br><b>↑↑</b> ダッシュ　<b>↓↓</b> バックステップ</div>
     <div id="dmg"></div>
   </div>
   <div id="start" class="overlay">
     <img src="logo.jpg" alt="REDLINE AGENT">
     <div class="starttap">タップではじめる</div>
-    <div class="version">REDLINE AGENT prototype v1.4</div>
+    <div class="version">REDLINE AGENT prototype v1.5</div>
   </div>
   <div id="outfit" class="overlay hidden">
     <div class="otitle">AGENT OUTFIT — 衣装選択</div>
@@ -475,15 +475,23 @@ playerMesh.visible = false; // v1: box figure replaced by the Rei billboard spri
 var OUTFITS = [
   { name: '英国紳士＋ライフル',       idle: 'assets/rei-outfits/frames/o1-idle.png',
     walkA: 'assets/rei-outfits/frames/o1-walk-a.png', walkD: 'assets/rei-outfits/frames/o1-walk-d.png',
+    readyA: 'assets/rei-outfits/frames/o1-ready-a.png', readyB: 'assets/rei-outfits/frames/o1-ready-b.png',
+    shoot: 'assets/rei-outfits/frames/o1-shoot.png',
     start: 'assets/rei-outfits/frames/o1-start.png', clear: 'assets/rei-outfits/frames/o1-clear.png' },
   { name: 'ダークスーツ＋ワルサーP38', idle: 'assets/rei-outfits/frames/o2-idle.png',
     walkA: 'assets/rei-outfits/frames/o2-walk-a.png', walkB: 'assets/rei-outfits/frames/o2-walk-b.png',
+    readyB: 'assets/rei-outfits/frames/o2-ready-b.png',
+    shoot: 'assets/rei-outfits/frames/o2-shoot.png',
     start: 'assets/rei-outfits/frames/o2-start.png', clear: 'assets/rei-outfits/frames/o2-clear.png' },
   { name: '海兵隊迷彩＋M40',           idle: 'assets/rei-outfits/frames/o3-idle.png',
     walkA: 'assets/rei-outfits/frames/o3-walk-a.png', walkB: 'assets/rei-outfits/frames/o3-walk-b.png',
+    readyA: 'assets/rei-outfits/frames/o3-ready-a.png', readyB: 'assets/rei-outfits/frames/o3-ready-b.png',
+    shoot: 'assets/rei-outfits/frames/o3-shoot.png',
     start: 'assets/rei-outfits/frames/o3-start.png', clear: 'assets/rei-outfits/frames/o3-clear.png' },
   { name: '中世の狩人＋弓',             idle: 'assets/rei-outfits/frames/o4-idle.png',
     walkA: 'assets/rei-outfits/frames/o4-walk-a.png', walkB: 'assets/rei-outfits/frames/o4-walk-b.png',
+    readyA: 'assets/rei-outfits/frames/o4-ready-a.png', readyB: 'assets/rei-outfits/frames/o4-ready-b.png',
+    shoot: 'assets/rei-outfits/frames/o4-shoot.png',
     start: 'assets/rei-outfits/frames/o4-start.png', clear: 'assets/rei-outfits/frames/o4-clear.png' }
 ];
 /* v1.3 walk cycles: EVERY outfit now has a full two-phase cycle
@@ -507,6 +515,23 @@ var WALK_CYCLES = [
   ['o3-idle', 'o3-walk-a', 'o3-idle', 'o3-walk-b'],
   ['o4-idle', 'o4-walk-a', 'o4-idle', 'o4-walk-b']
 ];
+/* v1.5: while MOVING (forward/back walk, dash, backstep, lane and
+   cover transits) the weapon is carried READY in front of the body:
+   READY_CYCLES mirror WALK_CYCLES with the ready variant of each step
+   phase. A phase whose ready frame did not pass the generation audit
+   (see BUILD-NOTES v1.5) falls back to the plain walk frame — the
+   fields are simply absent from that outfit's entry. The standing
+   frames stay the relaxed idle everywhere (stopped and cover idle
+   included). SHOOT_KEYS: one aimed shooting pose per outfit, shown
+   for ~0.28 s on firing; null = keep the v1 lean pulse instead. */
+var READY_CYCLES = WALK_CYCLES.map(function(cyc, i){
+  var n = i + 1, o = OUTFITS[i];
+  return [cyc[0],
+          o.readyA ? 'o'+n+'-ready-a' : cyc[1],
+          cyc[2],
+          o.readyB ? 'o'+n+'-ready-b' : cyc[3]];
+});
+var SHOOT_KEYS = OUTFITS.map(function(o, i){ return o.shoot ? 'o'+(i+1)+'-shoot' : null; });
 var curOutfit = 0; // 0-based index into OUTFITS; kept across resets
 var texLoader = new THREE.TextureLoader();
 var texAspect = {}; // key -> width/height once loaded
@@ -525,6 +550,9 @@ OUTFITS.forEach(function(o, i){
   if (o.walkA) frameTex['o'+n+'-walk-a'] = loadTex('o'+n+'-walk-a', o.walkA);
   if (o.walkB) frameTex['o'+n+'-walk-b'] = loadTex('o'+n+'-walk-b', o.walkB);
   if (o.walkD) frameTex['o'+n+'-walk-d'] = loadTex('o'+n+'-walk-d', o.walkD);
+  if (o.readyA) frameTex['o'+n+'-ready-a'] = loadTex('o'+n+'-ready-a', o.readyA);
+  if (o.readyB) frameTex['o'+n+'-ready-b'] = loadTex('o'+n+'-ready-b', o.readyB);
+  if (o.shoot) frameTex['o'+n+'-shoot'] = loadTex('o'+n+'-shoot', o.shoot);
 });
 var playerSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: idleTex[0], transparent: true }));
 playerSprite.scale.set(1.03, 2.05, 1);
@@ -569,6 +597,8 @@ function resetState(){
     time: 0,
     outfit: curOutfit + 1,   // v1: selected outfit (1-based, for HUD/verify)
     leanUntil: -1,           // v1: brief forward lean after shooting
+    shootPoseUntil: -1,      // v1.5: shooting-pose frame shown while S.time < this
+    hintShown: false,        // v1.5: one-time control hint per run
     rocketNextAt: Infinity   // v1.2: next allowed rocket launch (game time); armed past 60 m
   };
   enemies.forEach(function(e){ resetEnemy(e); });
@@ -759,17 +789,33 @@ function handleSide(dir, now){
       return;
     }
     /* same side as the lane but not at an object (after a backstep /
-       step-back in the lane): re-enter cover at the nearest object */
+       step-back in the lane): re-enter cover at the nearest object.
+       v1.5: works from a full stop too (stopped search window); with
+       nothing in range the player stays and is told so. */
     if (!S.cover){
-      if (S.mode === 'stop'){ showMsg('移動中に左右スワイプで物陰へ', true, 600); return; }
-      var objL = nearestCover(dir);
+      var objL = (S.mode === 'stop') ? nearestCoverStopped(dir) : nearestCover(dir);
       if (objL) enterCover(objL, dir, 'enter');
+      else if (S.mode === 'stop') showMsg('近くに物陰がない', true, 600);
       return;
     }
     return;
   }
-  if (S.mode === 'stop'){ showMsg('移動中に左右スワイプで物陰へ', true, 600); return; }
-  /* first swipe: move to nearest cover on that side, immediately */
+  /* v1.5: side swipes work in EVERY play state. From a full stop in the
+     centre lane the player steps into the nearest cover on that side
+     within |dz| <= 7 m (nearest ahead preferred, else nearest behind);
+     with nothing in range they stay put with a message — the old
+     "only while moving" gate read as input being blocked on device.
+     A second same-dir swipe inside the 350 ms window then fires from
+     that cover via the A-scheme branch above (cover + shot in one
+     double-swipe; with no lockable target shoot() just reports
+     NO TARGET and no round is fired). */
+  if (S.mode === 'stop'){
+    var objS = nearestCoverStopped(dir);
+    if (objS) enterCover(objS, dir, 'enter');
+    else showMsg('近くに物陰がない', true, 600);
+    return;
+  }
+  /* first swipe while moving: move to nearest cover on that side, immediately */
   var obj = nearestCover(dir);
   if (obj){
     enterCover(obj, dir, 'enter');
@@ -792,6 +838,21 @@ function nearestCover(dir){
     if (score < bestScore){ bestScore = score; best = c; }
   });
   return best;
+}
+/* v1.5: cover search for a STOPPED player — same side, |dz| <= 7 m,
+   prefer the nearest object ahead, else the nearest behind. */
+function nearestCoverStopped(dir){
+  var ahead = null, aheadDz = 1e9, behind = null, behindDz = -1e9;
+  covers.forEach(function(c){
+    if (c.flipAnim) return;
+    if (dir==='left' && c.cx <= 0) return;
+    if (dir==='right' && c.cx >= 0) return;
+    var dz = c.cz - S.pz;
+    if (Math.abs(dz) > 7) return;
+    if (dz >= 0){ if (dz < aheadDz){ aheadDz = dz; ahead = c; } }
+    else if (dz > behindDz){ behindDz = dz; behind = c; }
+  });
+  return ahead || behind;
 }
 function playerInCover(){ return !!S.cover && !S.coverAnim; }
 /* v1.2 lane protection rule: while the player is at a cover object or
@@ -822,8 +883,17 @@ function pickTarget(dir){
 function shoot(dir){
   var t = pickTarget(dir);
   S.shotsFired++;
-  S.leanUntil = S.time + 0.18; // v1: sprite leans forward briefly when firing
-  var muzzle = new THREE.Vector3(S.px + (dir==='left'?0.3:-0.3), 1.5, S.pz + 0.5);
+  /* v1.5: with a shooting pose available for this outfit, show it for
+     ~0.28 s and place the muzzle flash at the weapon's forward tip
+     (just past shoulder/head height on the firing side); the v1 lean
+     pulse stays OFF — the pose replaces it. Without a pose frame,
+     keep the original lean behaviour. */
+  var hasPose = !!SHOOT_KEYS[curOutfit];
+  if (hasPose){ S.shootPoseUntil = S.time + 0.28; S.leanUntil = -1; }
+  else { S.leanUntil = S.time + 0.18; S.shootPoseUntil = -1; }
+  var muzzle = hasPose
+    ? new THREE.Vector3(S.px + (dir==='left'?0.35:-0.35), 1.6, S.pz + 0.55)
+    : new THREE.Vector3(S.px + (dir==='left'?0.3:-0.3), 1.5, S.pz + 0.5);
   addMuzzle(muzzle);
   if (!t){ showMsg('NO TARGET', true, 450); return; }
   marker.position.set(t.x, 1.4, t.z); marker.visible = true;
@@ -1191,6 +1261,12 @@ function startCutin(){
     if (S.phase !== 'cutin') return;
     document.getElementById('startcut').classList.add('hidden');
     S.phase = 'play'; showMsg('MISSION START', false, 900);
+    /* v1.5: one-time control hint per run, with the corrected wording
+       (side swipes no longer require movement) */
+    if (!S.hintShown){
+      S.hintShown = true;
+      setTimeout(function(){ if (S.phase === 'play') showMsg('左右スワイプで物陰へ', true, 900); }, 1400);
+    }
   }, 1600);
 }
 function tapToStart(){
@@ -1296,16 +1372,28 @@ function loop(){
        NO cover squash any more — the sprite keeps its full height in
        cover; hiding is expressed by position/occlusion only.) */
     var transiting = !!S.coverAnim;
-    var spdNow = S.backstepAnim || S.laneAnim ? 0 :
+    var bsActive = !!S.backstepAnim, lnActive = !!S.laneAnim;
+    var spdNow = bsActive || lnActive ? 0 :
                  (S.mode === 'forward' && !S.cover) ? ((S.time < S.dashUntil && !S.lane) ? P.DASH_SPEED : P.WALK_SPEED) :
                  (S.mode === 'back' && !S.cover) ? P.BACK_SPEED : 0;
-    var moving = spdNow > 0 || transiting;
-    if (moving) S.walkClock += dt * (transiting ? P.WALK_SPEED : spdNow) / P.STRIDE_M; // in steps
-    var cycle = WALK_CYCLES[curOutfit];
-    var fullCycle = cycle.length >= 4;
-    if (moving && cycle.length > 1){
+    /* v1.5: backstep and lane step-back are movement too — they show
+       the ready frames (backward cycle) instead of the relaxed idle */
+    var moving = spdNow > 0 || transiting || bsActive || lnActive;
+    if (moving){
+      var effSpd = transiting ? P.WALK_SPEED :
+                   bsActive ? P.BACKSTEP_DIST / P.BACKSTEP_S :
+                   lnActive ? 2.0 / 0.3 : spdNow;
+      S.walkClock += dt * effSpd / P.STRIDE_M; // in steps
+    }
+    var shootKey = SHOOT_KEYS[curOutfit];
+    var cycle = READY_CYCLES[curOutfit];
+    if (shootKey && S.time < S.shootPoseUntil){
+      /* v1.5: the aimed shooting pose replaces the frame while firing */
+      setSprite(shootKey);
+    } else if (moving && cycle.length > 1){
       var seq = cycle;
-      if (S.mode === 'back' && !transiting && cycle.length >= 4) seq = [cycle[0], cycle[3], cycle[2], cycle[1]]; // reverse order
+      var goingBack = bsActive || lnActive || (S.mode === 'back' && !transiting);
+      if (goingBack && seq.length >= 4) seq = [cycle[0], cycle[3], cycle[2], cycle[1]]; // reverse order
       var frameSteps = seq.length >= 4 ? 0.5 : 1.0;   // half a step per frame (full cycles)
       var idx = Math.floor(S.walkClock / frameSteps) % seq.length;
       setSprite(seq[idx]);
@@ -1371,6 +1459,8 @@ window.RLA = {
     obstacles: obstacles.map(function(o){ return {x:o.cx, z:o.cz, hx:o.hx, hz:o.hz, rot:o.rot,
       kind:o.kind, type:o.type, cover:o.cover, flipped:o.flipped}; }),
     enemies: enemies.map(function(e){return {kind:e.kind, side:e.side, z:e.z, alive:e.alive, active:e.active, state:e.state};}),
+    /* v1.5 verification surface */
+    shootPose: S.time < S.shootPoseUntil,
     /* v1.3 verification surface */
     fxCount: fx.length,
     lineCount: scene.children.filter(function(c){ return c.isLine; }).length,
