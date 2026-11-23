@@ -74,7 +74,7 @@
   <div id="start" class="overlay">
     <img src="logo.jpg" alt="REDLINE AGENT">
     <div class="starttap">タップではじめる</div>
-    <div class="version">REDLINE AGENT prototype v1.1</div>
+    <div class="version">REDLINE AGENT prototype v1.2</div>
   </div>
   <div id="outfit" class="overlay hidden">
     <div class="otitle">AGENT OUTFIT — 衣装選択</div>
@@ -130,7 +130,14 @@ var P = {
   SNIPER_WARN_S: 1.2,     // red line warning time before sniper fires
   SNIPER_FINAL_S: 0.2,    // final warning (thicker/brighter) in last 0.2 s
   LIFE: 3,
-  TOTAL_ENEMIES: 6
+  TOTAL_ENEMIES: 6,
+  /* v1.2 additions */
+  PLAYER_R: 0.25,         // player collision radius (m) vs obstacle footprints
+  STRIDE_M: 0.55,         // walk-cycle stride length (m/step) -> ~4 steps/s at walk speed
+  ROCKET_FROM_Z: 60,      // rockets only appear in the second half of the stage
+  ROCKET_CD_S: 18,        // global rocket cooldown (s)
+  ROCKET_SPEED: 14,       // rocket travel speed (m/s)
+  LANE_X: 4.1             // |x| of the cover rows = the edge lanes
 };
 
 /* ===== visualViewport fit (same approach as FIELD GOLF) ===== */
@@ -259,8 +266,15 @@ var bTexes = [
   }
 })();
 
-/* --- cover objects: cars & street trees alternating left/right --- */
-var covers = []; // {x, z, kind, mesh}
+/* --- obstacles & cover objects (v1.2) ---
+   Every street object has a real footprint {cx, cz, hx, hz, rot} (rot = yaw
+   radians; rotated cars are tested as OBBs). `obstacles` holds everything
+   solid (cover objects + decorative cars); `covers` is the cover-capable
+   subset used by the cover/lane logic. Cars are built around a pivot at
+   their centre height so a rocket hit can tumble the whole group and land
+   it upright or upside down (see launchCar). */
+var obstacles = []; // {cx, cz, hx, hz, rot, kind:'car'|'tree', type, cover, mesh, shadow, flipped, flipAnim}
+var covers = [];    // cover-capable subset of obstacles
 /* fake blob shadow (cheap grounding; no shadow maps) */
 function blobShadow(rx, rz, opacity){
   var m = new THREE.Mesh(new THREE.CircleGeometry(1, 20),
@@ -268,28 +282,73 @@ function blobShadow(rx, rz, opacity){
   m.rotation.x = -Math.PI/2; m.scale.set(rx, rz, 1); m.position.y = 0.02;
   return m;
 }
-function makeCar(x, z, color){
-  var g = new THREE.Group();
-  var paint = new THREE.MeshStandardMaterial({color:color, metalness:0.55, roughness:0.38});
-  var body = new THREE.Mesh(new THREE.BoxGeometry(1.88, 0.55, 4.3), paint);
-  body.position.y = 0.55; g.add(body);
-  var shoulder = new THREE.Mesh(new THREE.BoxGeometry(1.78, 0.22, 3.4), paint); // rounded-ish upper body line
-  shoulder.position.y = 0.9; g.add(shoulder);
-  var cab = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.5, 1.95),
-    new THREE.MeshStandardMaterial({color:0x0d131c, metalness:0.85, roughness:0.16})); // dark glass cabin
-  cab.position.set(0, 1.22, -0.25); g.add(cab);
+function wheelSet(g, r, w, xs, zs, mat){
+  var geo = new THREE.CylinderGeometry(r, r, w, 12);
+  xs.forEach(function(x){ zs.forEach(function(z){
+    var wh = new THREE.Mesh(geo, mat);
+    wh.rotation.z = Math.PI/2; wh.position.set(x, r, z); g.add(wh);
+  }); });
+}
+/* Car builders: parts are built with y measured from the ground inside an
+   inner group offset by -pivot, so rotating the outer group tumbles the car
+   around its centre. Front of the car is local +z (headlights), rear -z. */
+function carPaint(color){ return new THREE.MeshStandardMaterial({color:color, metalness:0.55, roughness:0.38}); }
+function carGlass(){ return new THREE.MeshStandardMaterial({color:0x0d131c, metalness:0.85, roughness:0.16}); }
+function carLights(g, wid, y, zF, zR){
+  var hl = new THREE.Mesh(new THREE.BoxGeometry(wid*0.8, 0.13, 0.06), new THREE.MeshBasicMaterial({color:0xffedb5}));
+  hl.position.set(0, y, zF); g.add(hl);
+  var tl = new THREE.Mesh(new THREE.BoxGeometry(wid*0.82, 0.15, 0.06), new THREE.MeshBasicMaterial({color:0xff2a30}));
+  tl.position.set(0, y, zR); g.add(tl);
+}
+var CAR_TYPES = {
+  regular: {len:4.3, wid:1.88, pivot:0.73},
+  compact: {len:3.4, wid:1.70, pivot:0.70},
+  van:     {len:5.6, wid:2.00, pivot:0.95},
+  truck:   {len:6.0, wid:2.10, pivot:1.00}
+};
+function buildCarMesh(type, color){
+  var spec = CAR_TYPES[type];
+  var L = spec.len, W = spec.wid;
+  var outer = new THREE.Group();
+  var g = new THREE.Group(); g.position.y = -spec.pivot; outer.add(g);
+  var paint = carPaint(color);
   var wheelMat = new THREE.MeshStandardMaterial({color:0x0a0a0c, roughness:0.92, metalness:0.05});
-  var wheelGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.24, 12);
-  [[-0.86,1.35],[0.86,1.35],[-0.86,-1.35],[0.86,-1.35]].forEach(function(p){
-    var wh = new THREE.Mesh(wheelGeo, wheelMat);
-    wh.rotation.z = Math.PI/2; wh.position.set(p[0], 0.34, p[1]); g.add(wh);
-  });
-  var hl = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.13, 0.06), new THREE.MeshBasicMaterial({color:0xffedb5}));
-  hl.position.set(0, 0.66, 2.16); g.add(hl); // headlights (far side)
-  var tl = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.15, 0.06), new THREE.MeshBasicMaterial({color:0xff2a30}));
-  tl.position.set(0, 0.66, -2.16); g.add(tl); // taillights (player side)
-  var sh = blobShadow(1.25, 2.5, 0.32); g.add(sh);
-  g.position.set(x, 0, z); scene.add(g); return g;
+  if (type === 'van'){
+    var body = new THREE.Mesh(new THREE.BoxGeometry(W, 1.62, L), paint); body.position.y = 1.06; g.add(body);
+    var shield = new THREE.Mesh(new THREE.BoxGeometry(W*0.92, 0.5, 0.08), carGlass()); shield.position.set(0, 1.32, L/2 + 0.01); g.add(shield);
+    var band = new THREE.Mesh(new THREE.BoxGeometry(W + 0.02, 0.34, L*0.55), carGlass()); band.position.set(0, 1.42, -0.3); g.add(band);
+    wheelSet(g, 0.40, 0.26, [-W/2 + 0.08, W/2 - 0.08], [L/2 - 0.95, -L/2 + 0.95], wheelMat);
+    carLights(g, W, 0.62, L/2 + 0.02, -L/2 - 0.02);
+  } else if (type === 'truck'){
+    var cargo = new THREE.Mesh(new THREE.BoxGeometry(W, 1.95, L*0.64), new THREE.MeshStandardMaterial({color:0x8a8f96, metalness:0.3, roughness:0.6}));
+    cargo.position.set(0, 1.22, -L*0.16); g.add(cargo);
+    var cab = new THREE.Mesh(new THREE.BoxGeometry(W*0.94, 1.28, L*0.26), paint); cab.position.set(0, 0.88, L*0.34); g.add(cab);
+    var cglass = new THREE.Mesh(new THREE.BoxGeometry(W*0.86, 0.46, 0.08), carGlass()); cglass.position.set(0, 1.12, L*0.34 + L*0.13 + 0.01); g.add(cglass);
+    wheelSet(g, 0.42, 0.28, [-W/2 + 0.08, W/2 - 0.08], [L/2 - 0.8, -L/2 + 0.85], wheelMat);
+    carLights(g, W, 0.58, L/2 + 0.02, -L/2 - 0.02);
+  } else { /* regular / compact sedan */
+    var b = new THREE.Mesh(new THREE.BoxGeometry(W, 0.55, L), paint); b.position.y = 0.55; g.add(b);
+    var sh = new THREE.Mesh(new THREE.BoxGeometry(W*0.95, 0.22, L*0.79), paint); sh.position.y = 0.9; g.add(sh);
+    var cab2 = new THREE.Mesh(new THREE.BoxGeometry(W*0.86, 0.5, L*0.45), carGlass()); cab2.position.set(0, 1.22, -L*0.06); g.add(cab2);
+    wheelSet(g, 0.34, 0.24, [-W/2 + 0.08, W/2 - 0.08], [L/2 - 0.85, -L/2 + 0.85], wheelMat);
+    carLights(g, W, 0.66, L/2 + 0.02, -L/2 - 0.02);
+  }
+  return {outer: outer, pivot: spec.pivot};
+}
+function addCar(x, z, type, rot, isCover, color){
+  var built = buildCarMesh(type, color);
+  var spec = CAR_TYPES[type];
+  built.outer.position.set(x, spec.pivot, z);
+  built.outer.rotation.y = rot;
+  scene.add(built.outer);
+  var shadow = blobShadow(spec.wid/2 + 0.35, spec.len/2 + 0.35, 0.32);
+  shadow.position.set(x, 0.02, z); scene.add(shadow);
+  var o = {cx:x, cz:z, hx:spec.wid/2, hz:spec.len/2, rot:rot, kind:'car', type:type,
+           cover:isCover, mesh:built.outer, pivot:spec.pivot, shadow:shadow,
+           flipped:false, flipAnim:null, home:{cx:x, cz:z, rot:rot}};
+  obstacles.push(o);
+  if (isCover) covers.push(o);
+  return o;
 }
 function makeTree(x, z){
   var g = new THREE.Group();
@@ -301,25 +360,84 @@ function makeTree(x, z){
     var fol = new THREE.Mesh(new THREE.SphereGeometry(b[3], 9, 7), new THREE.MeshLambertMaterial({color:greens[i%greens.length]}));
     fol.position.set(b[0], b[1], b[2]); fol.scale.y = 0.85; g.add(fol);
   });
-  var sh = blobShadow(1.15, 1.15, 0.30); g.add(sh);
-  g.position.set(x, 0, z); scene.add(g); return g;
+  g.position.set(x, 0, z); scene.add(g);
+  var sh = blobShadow(1.15, 1.15, 0.30); sh.position.set(x, 0.02, z); scene.add(sh);
+  var o = {cx:x, cz:z, hx:0.55, hz:0.55, rot:0, kind:'tree', type:'tree',
+           cover:true, mesh:g, pivot:0, shadow:sh, flipped:false, flipAnim:null,
+           home:{cx:x, cz:z, rot:0}};
+  obstacles.push(o); covers.push(o);
+  return o;
 }
 (function placeCovers(){
   var carColors=[0x5a6270, 0x39445c, 0x6e3b3b, 0x2f4f4a, 0x707a68];
-  var i=0;
-  for (var z=9; z<P.STREET_LEN-4; z+=10.5, i++){
+  /* v1.2 car variety for the cover rows: type/rotation schedule for the
+     right-row cars (placement order). Sideways = rot 90 deg, diagonal =
+     +/-30..40 deg. All of them stay cover-capable. */
+  var rightCarPlan = [
+    ['regular', 0], ['compact', 0], ['regular', 0], ['van', 0], ['regular', 0],
+    ['regular', Math.PI/2], ['compact', 0], ['compact', 0.61], ['regular', 0],
+    ['regular', -0.70], ['van', 0], ['truck', 0], ['regular', 0],
+    ['compact', 0], ['regular', 0], ['compact', Math.PI/2], ['regular', 0], ['truck', 0]
+  ];
+  var ci = 0, ri = 0;
+  for (var z=9, i=0; z<P.STREET_LEN-4; z+=10.5, i++){
     var side = (i%2===0) ? -1 : 1;
-    var x = side*4.1;
-    var mesh = (i%2===0) ? makeCar(x, z, carColors[i%carColors.length]) : makeTree(x, z);
-    covers.push({x:x, z:z, kind:(i%2===0?'car':'tree'), mesh:mesh});
-    // pair on the opposite side every other step so both sides are often available
-    if (i%2===1){
-      var x2 = -side*4.1, z2 = z+5;
-      var mesh2 = makeCar(x2, z2, carColors[(i+2)%carColors.length]);
-      covers.push({x:x2, z:z2, kind:'car', mesh:mesh2});
+    var x = side * P.LANE_X;
+    if (i%2===0){
+      var plan = rightCarPlan[ri++ % rightCarPlan.length];
+      addCar(x, z, plan[0], plan[1], true, carColors[ci++ % carColors.length]);
+    } else {
+      makeTree(x, z);
+      var plan2 = rightCarPlan[ri++ % rightCarPlan.length];
+      addCar(-x, z+5, plan2[0], plan2[1], true, carColors[ci++ % carColors.length]);
     }
   }
+  /* decorative cars (obstacles only, NOT cover-capable), parked closer to
+     the buildings so the centre lane and the cover rows stay usable */
+  addCar( 5.05,  35, 'regular', 0,     false, carColors[1]);
+  addCar( 4.60, 141, 'compact', 0.35,  false, carColors[3]);
+  addCar(-4.95,  98, 'van',     0,     false, carColors[2]);
+  addCar( 5.05, 160, 'regular', 0,     false, carColors[4]);
 })();
+/* --- footprint geometry (OBB) --- */
+function toLocal(o, px, pz){
+  var dx = px - o.cx, dz = pz - o.cz;
+  var c = Math.cos(o.rot), s = Math.sin(o.rot);
+  return [dx * c - dz * s, dx * s + dz * c];
+}
+function pointInFootprint(o, px, pz, expand){
+  var l = toLocal(o, px, pz);
+  return Math.abs(l[0]) < o.hx + expand && Math.abs(l[1]) < o.hz + expand;
+}
+function zExtent(o){ return Math.abs(Math.sin(o.rot)) * o.hx + Math.abs(Math.cos(o.rot)) * o.hz; }
+/* cover spot: directly on the player side (-z) of the object, fully outside
+   its footprint (this is the v1.2 fix for the player sinking into cars:
+   the old spot obj.z - 1.8 lay INSIDE a car's 2.15 m half-depth). */
+function coverSpot(o){
+  return {x: o.cx, z: o.cz - zExtent(o) - P.PLAYER_R - 0.18};
+}
+/* push a point out of every footprint (expanded by the player radius);
+   returns [x, z]. Least-penetration axis in the object's local frame. */
+function resolveCollision(px, pz){
+  px = Math.max(-5.55, Math.min(5.55, px));
+  pz = Math.max(0, Math.min(P.STREET_LEN + 2, pz));
+  for (var iter = 0; iter < 2; iter++){
+    for (var j = 0; j < obstacles.length; j++){
+      var o = obstacles[j];
+      var l = toLocal(o, px, pz);
+      var ex = o.hx + P.PLAYER_R, ez = o.hz + P.PLAYER_R;
+      if (Math.abs(l[0]) < ex && Math.abs(l[1]) < ez){
+        var penX = ex - Math.abs(l[0]), penZ = ez - Math.abs(l[1]);
+        if (penX < penZ) l[0] = (l[0] < 0 ? -ex : ex);
+        else l[1] = (l[1] < 0 ? -ez : ez);
+        var c = Math.cos(o.rot), s = Math.sin(o.rot);
+        px = o.cx + l[0] * c + l[1] * s;
+        pz = o.cz - l[0] * s + l[1] * c;
+      }
+    }
+  }
+  return [px, pz];
+}
 /* goal gate */
 (function goalGate(){
   var mat = new THREE.MeshBasicMaterial({color:0xffd257});
@@ -356,14 +474,33 @@ playerMesh.visible = false; // v1: box figure replaced by the Rei billboard spri
    panels are deliberately NOT used (see BUILD-NOTES v1). */
 var OUTFITS = [
   { name: '英国紳士＋ライフル',       idle: 'assets/rei-outfits/frames/o1-idle.png',
-    walkA: 'assets/rei-outfits/frames/o1-walk-a.png', walkB: 'assets/rei-outfits/frames/o1-walk-b.png',
+    walkA: 'assets/rei-outfits/frames/o1-walk-a.png', walkC: 'assets/rei-outfits/frames/o1-walk-c.png',
     start: 'assets/rei-outfits/frames/o1-start.png', clear: 'assets/rei-outfits/frames/o1-clear.png' },
   { name: 'ダークスーツ＋ワルサーP38', idle: 'assets/rei-outfits/frames/o2-idle.png',
     start: 'assets/rei-outfits/frames/o2-start.png', clear: 'assets/rei-outfits/frames/o2-clear.png' },
   { name: '海兵隊迷彩＋M40',           idle: 'assets/rei-outfits/frames/o3-idle.png',
+    walkA: 'assets/rei-outfits/frames/o3-walk-a.png', walkB: 'assets/rei-outfits/frames/o3-walk-b.png',
     start: 'assets/rei-outfits/frames/o3-start.png', clear: 'assets/rei-outfits/frames/o3-clear.png' },
   { name: '中世の狩人＋弓',             idle: 'assets/rei-outfits/frames/o4-idle.png',
+    walkA: 'assets/rei-outfits/frames/o4-walk-a.png',
     start: 'assets/rei-outfits/frames/o4-start.png', clear: 'assets/rei-outfits/frames/o4-clear.png' }
+];
+/* v1.2 walk cycles, built ONLY from the back-view phases the sheets
+   actually contain (audit in BUILD-NOTES v1.2):
+   - outfit 1: standing -> contact (walk-a) -> standing -> passing (walk-c,
+     right leg raised). o1-walk-b was a near-duplicate of walk-a's phase
+     (same leg forward) and is retired from the cycle.
+   - outfit 2: no back-view walk frames exist (its walk panels are side
+     view) -> idle only.
+   - outfit 3: standing -> stride A (walk-a) -> standing -> stride B
+     (walk-b): both leg phases.
+   - outfit 4: one step phase -> standing <-> step.
+   Backward movement plays the same cycle in reverse order. */
+var WALK_CYCLES = [
+  ['o1-idle', 'o1-walk-a', 'o1-idle', 'o1-walk-c'],
+  ['o2-idle'],
+  ['o3-idle', 'o3-walk-a', 'o3-idle', 'o3-walk-b'],
+  ['o4-idle', 'o4-walk-a']
 ];
 var curOutfit = 0; // 0-based index into OUTFITS; kept across resets
 var texLoader = new THREE.TextureLoader();
@@ -376,8 +513,14 @@ function loadTex(key, url){
   return t;
 }
 var idleTex = OUTFITS.map(function(o, i){ return loadTex('o'+(i+1)+'-idle', o.idle); });
-var walkTexA = loadTex('o1-walk-a', OUTFITS[0].walkA);
-var walkTexB = loadTex('o1-walk-b', OUTFITS[0].walkB);
+var frameTex = {}; // key -> THREE.Texture for every frame the cycles can show
+OUTFITS.forEach(function(o, i){
+  var n = i + 1;
+  frameTex['o'+n+'-idle'] = idleTex[i];
+  if (o.walkA) frameTex['o'+n+'-walk-a'] = loadTex('o'+n+'-walk-a', o.walkA);
+  if (o.walkB) frameTex['o'+n+'-walk-b'] = loadTex('o'+n+'-walk-b', o.walkB);
+  if (o.walkC) frameTex['o'+n+'-walk-c'] = loadTex('o'+n+'-walk-c', o.walkC);
+});
 var playerSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: idleTex[0], transparent: true }));
 playerSprite.scale.set(1.03, 2.05, 1);
 playerSprite.position.set(0, 2.05 / 2, 0);
@@ -385,14 +528,16 @@ scene.add(playerSprite);
 var playerShadow = blobShadow(0.55, 0.55, 0.36); // v1.1: Rei had no shadow; blob shadow grounds her
 scene.add(playerShadow);
 var SPRITE_H = 2.05; // sprite height in metres (matches the old box figure's ~2.0 m)
-function spriteKeyNow(){
-  if (curOutfit === 0 && playerSprite.material.map === walkTexA) return 'o1-walk-a';
-  if (curOutfit === 0 && playerSprite.material.map === walkTexB) return 'o1-walk-b';
-  return 'o' + (curOutfit + 1) + '-idle';
-}
-function applyOutfitSprite(){
-  playerSprite.material.map = idleTex[curOutfit];
+var curSpriteKey = 'o1-idle';
+function setSprite(key){
+  if (key === curSpriteKey) return;
+  curSpriteKey = key;
+  playerSprite.material.map = frameTex[key];
   playerSprite.material.needsUpdate = true;
+}
+function spriteKeyNow(){ return curSpriteKey; }
+function applyOutfitSprite(){
+  setSprite('o' + (curOutfit + 1) + '-idle');
 }
 
 /* ===== Game state ===== */
@@ -412,13 +557,25 @@ function resetState(){
     lastUp: -9999, lastDown: -9999,   // v1.1: double up/down detection (same 350 ms window)
     dashUntil: -1,                    // v1.1: dash active while S.time < dashUntil
     backstepAnim: null,               // v1.1: {fromZ, toZ, t} quick backward hop
-    walkPhase: 0,
+    laneAnim: null,                   // v1.2: {fromZ, toZ, t} step back within the lane (no previous cover)
+    lane: null,                       // v1.2: null | 'left' | 'right' — edge lane the player is in
+    laneX: 0,                         // v1.2: x of the current lane (cover row / dodge offset)
+    walkClock: 0,                     // v1.2: walk-cycle clock (s of movement)
     time: 0,
     outfit: curOutfit + 1,   // v1: selected outfit (1-based, for HUD/verify)
     leanUntil: -1,           // v1: brief forward lean after shooting
-    spriteCrouch: 1          // v1: smoothed sprite height factor in cover
+    rocketNextAt: Infinity   // v1.2: next allowed rocket launch (game time); armed past 60 m
   };
   enemies.forEach(function(e){ resetEnemy(e); });
+  /* v1.2: restore every obstacle (rocket-flipped cars return home) */
+  obstacles.forEach(function(o){
+    o.cx = o.home.cx; o.cz = o.home.cz; o.rot = o.home.rot;
+    o.flipped = false; o.flipAnim = null;
+    o.mesh.rotation.set(0, o.rot, 0);
+    o.mesh.position.set(o.cx, o.pivot, o.cz);
+    if (o.shadow) o.shadow.position.set(o.cx, 0.02, o.cz);
+  });
+  clearRockets();
   playerMesh.position.set(0,0,0); playerMesh.rotation.y = 0;
   updateHUD();
 }
@@ -496,8 +653,11 @@ function updateHUD(){
   elKills.textContent = '撃破 ' + S.kills + ' / ' + P.TOTAL_ENEMIES;
   elProg.style.width = Math.min(100, S.pz / P.STREET_LEN * 100) + '%';
   var st = S.backstepAnim ? 'バックステップ' :
+           (S.coverAnim && S.coverAnim.kind === 'advance') ? '物陰を前進中' :
+           (S.coverAnim && S.coverAnim.kind === 'retreat') ? '物陰を後退中' :
            (S.time < S.dashUntil && S.mode==='forward' && !S.cover) ? 'ダッシュ' :
            S.cover ? '物陰（' + (S.cover.side==='left'?'左':'右') + '）' :
+           S.lane ? (S.mode==='forward' ? '路肩を前進中' : S.mode==='back' ? '路肩を後退中' : '路肩') :
            S.mode==='forward' ? '前進中' : S.mode==='back' ? '後退中' : '停止';
   elState.innerHTML = '状態：<b>' + st + '</b>　残り ' + Math.max(0, Math.ceil(P.STREET_LEN - S.pz)) + 'm';
 }
@@ -508,19 +668,24 @@ function onSwipe(dir){
   var now = performance.now();
   if (dir === 'up'){
     var wasUp = S.lastUp; S.lastUp = now;
-    leaveCover();
-    S.mode = 'forward';
-    if (now - wasUp <= P.DOUBLE_MS && !S.backstepAnim){ S.dashUntil = S.time + P.DASH_S; } // v1.1: double-up = dash
+    if (S.cover){ coverAdvance(+1); }              // v1.2: move to the next cover ahead on the same side
+    else {
+      S.mode = 'forward';
+      /* v1.2 lane rule: dash only in the centre lane — in an edge lane a
+         double up-swipe is just a normal forward move */
+      if (!S.lane && now - wasUp <= P.DOUBLE_MS && !S.backstepAnim){ S.dashUntil = S.time + P.DASH_S; }
+    }
   } else if (dir === 'down'){
     var wasDown = S.lastDown; S.lastDown = now;
     if (now - wasDown <= P.DOUBLE_MS && !S.backstepAnim){
-      /* v1.1: double-down = backstep (takes priority over the single-down behaviours).
-         A quick ~2 m hop backwards, then stop. No invincibility: leaving cover exposes the player. */
+      /* v1.1: double-down = backstep (takes priority over the single-down
+         behaviours). v1.2: in a lane it drops the cover state but the
+         player stays at the lane's x, just hopped back. No invincibility. */
       leaveCover();
       S.backstepAnim = {fromZ: S.pz, toZ: Math.max(0, S.pz - P.BACKSTEP_DIST), t: 0};
       S.mode = 'stop';
     }
-    else if (S.cover){ /* in cover: down leaves cover and stops */ leaveCover(); S.mode='stop'; }
+    else if (S.cover){ coverAdvance(-1); }         // v1.2: back to the previous cover on the same side
     else if (S.mode !== 'stop'){ S.mode = 'stop'; }
     else { S.mode = 'back'; }
   } else if (dir === 'left' || dir === 'right'){
@@ -528,35 +693,88 @@ function onSwipe(dir){
   }
   updateHUD();
 }
-function leaveCover(){ S.cover = null; }
+function leaveCover(){ S.cover = null; S.coverAnim = null; }
+function enterCover(obj, side, kind){
+  var spot = coverSpot(obj);
+  S.cover = {side: side, obj: obj};
+  S.lane = side; S.laneX = obj.cx;
+  /* v1.2 transit path: swing out to the clear corridor inside the cover
+     row (|x| = 1.6 clears every footprint, incl. sideways/diagonal cars),
+     travel along it, then step in to the cover spot — so moving between
+     covers never clips through the object the player is leaving. */
+  var corridorX = side === 'left' ? 1.6 : -1.6;
+  var path = [];
+  if (Math.abs(S.px - corridorX) > 0.05) path.push([corridorX, S.pz]);
+  if (Math.abs(S.pz - spot.z) > 0.05) path.push([corridorX, spot.z]);
+  path.push([spot.x, spot.z]);
+  S.coverAnim = {path: path, seg: 0, kind: kind || 'enter'};
+}
+/* v1.2 cover-to-cover movement along one side of the street.
+   dirSign +1: next cover ahead; -1: previous cover. The player stays in
+   the edge lane and in cover state during and after the transit. With no
+   further object: forward = stay put; backward = step back within the
+   lane (cover state drops, lane is kept). */
+function coverAdvance(dirSign){
+  var side = S.cover.side;
+  var list = covers.filter(function(c){ return !c.flipAnim && (side === 'left' ? c.cx > 0 : c.cx < 0); });
+  list.sort(function(a, b){ return a.cz - b.cz; });
+  var idx = list.indexOf(S.cover.obj);
+  var next = (idx >= 0) ? list[idx + dirSign] : null;
+  if (next){ enterCover(next, side, dirSign > 0 ? 'advance' : 'retreat'); return; }
+  if (dirSign < 0){
+    leaveCover();
+    S.laneAnim = {fromZ: S.pz, toZ: Math.max(0, S.pz - 2.0), t: 0};
+    S.mode = 'stop';
+  } else {
+    showMsg('この先に物陰なし', true, 600);
+  }
+}
 function handleSide(dir, now){
   var last = S.lastSide[dir];
   S.lastSide[dir] = now;
   if (S.cover && S.cover.side === dir){
-    /* A-scheme: 2nd same-dir swipe within 350 ms (incl. right after cover entry,
-       or a double-swipe while already in cover) -> lock-on shot from cover */
+    /* A-scheme: 2nd same-dir swipe within 350 ms (incl. right after cover
+       entry, or a double-swipe while already in cover) -> lock-on shot */
     if (now - last <= P.DOUBLE_MS){ shoot(dir); }
     else { showMsg('もう一度 ' + (dir==='left'?'←':'→') + ' で射撃', true, 500); }
+    return;
+  }
+  if (S.cover || S.lane){
+    if (dir !== (S.cover ? S.cover.side : S.lane)){
+      /* v1.2: swipe toward the centre -> leave the lane, back to centre */
+      leaveCover(); S.lane = null; S.mode = 'stop';
+      showMsg('中央レーンへ', true, 500);
+      return;
+    }
+    /* same side as the lane but not at an object (after a backstep /
+       step-back in the lane): re-enter cover at the nearest object */
+    if (!S.cover){
+      if (S.mode === 'stop'){ showMsg('移動中に左右スワイプで物陰へ', true, 600); return; }
+      var objL = nearestCover(dir);
+      if (objL) enterCover(objL, dir, 'enter');
+      return;
+    }
     return;
   }
   if (S.mode === 'stop'){ showMsg('移動中に左右スワイプで物陰へ', true, 600); return; }
   /* first swipe: move to nearest cover on that side, immediately */
   var obj = nearestCover(dir);
   if (obj){
-    S.cover = {side:dir, obj:obj};
-    S.coverAnim = {tx: obj.x, tz: obj.z - 1.8, t: 0};
+    enterCover(obj, dir, 'enter');
   } else {
-    /* no cover object in range: quick sidestep dodge (still counts as cover briefly) */
-    S.cover = {side:dir, obj:null};
-    S.coverAnim = {tx: (dir==='left'?2.2:-2.2), tz: S.pz, t: 0};
+    /* no cover object in range: quick sidestep dodge (counts as cover) */
+    S.cover = {side: dir, obj: null};
+    S.lane = dir; S.laneX = (dir === 'left' ? 2.2 : -2.2);
+    S.coverAnim = {path: [[S.laneX, S.pz]], seg: 0, kind: 'enter'};
   }
 }
 function nearestCover(dir){
   var best = null, bestScore = 1e9;
   covers.forEach(function(c){
-    if (dir==='left' && c.x <= 0) return;
-    if (dir==='right' && c.x >= 0) return;
-    var dz = c.z - S.pz;
+    if (c.flipAnim) return; // a car tumbling through the air is not cover
+    if (dir==='left' && c.cx <= 0) return;
+    if (dir==='right' && c.cx >= 0) return;
+    var dz = c.cz - S.pz;
     if (dz < -6 || dz > 18) return;
     var score = Math.abs(dz - 4);
     if (score < bestScore){ bestScore = score; best = c; }
@@ -564,6 +782,14 @@ function nearestCover(dir){
   return best;
 }
 function playerInCover(){ return !!S.cover && !S.coverAnim; }
+/* v1.2 lane protection rule: while the player is at a cover object or
+   transiting between covers on the same side, fire from the OPPOSITE side
+   of the street is blocked by the object row. Same-side fire can hit
+   normally, even in cover. */
+function shotBlockedByLane(e){
+  if (!S.cover) return false;
+  return e.side !== S.cover.side;
+}
 
 /* ===== Shooting (player) ===== */
 function pickTarget(dir){
@@ -613,7 +839,9 @@ function killEnemy(e){
 }
 
 /* ===== Damage ===== */
+var godMode = false; // verification-only: collision drives teleport the player all over the street
 function damagePlayer(){
+  if (godMode) return;
   if (S.time < S.invulnUntil) return;
   S.life--; S.invulnUntil = S.time + 1.0;
   elDmg.style.opacity = 1; setTimeout(function(){ elDmg.style.opacity = 0; }, 180);
@@ -660,10 +888,11 @@ function enemyUpdate(e, dt){
       var from = new THREE.Vector3(e.x, 1.55, e.z);
       var to = new THREE.Vector3(S.px, 1.35, S.pz);
       var finalW = e.stateT > P.SNIPER_WARN_S - P.SNIPER_FINAL_S;
-      if (playerInCover()){
-        /* line is blocked by cover: draw it only up to the cover object */
+      if (shotBlockedByLane(e)){
+        /* v1.2: player in the opposite edge lane — the object row blocks
+           the line: draw it only up to the cover object */
         var c = S.cover.obj;
-        var bt = c ? new THREE.Vector3(c.x, 1.3, c.z) : new THREE.Vector3(S.px, 1.35, S.pz + 2);
+        var bt = c ? new THREE.Vector3(c.cx, 1.3, c.cz) : new THREE.Vector3(S.px, 1.35, S.pz + 2);
         aimLaser(from, bt, finalW ? 0.045 : 0.018, 0.55);
       } else {
         aimLaser(from, to, finalW ? 0.05 : 0.018, finalW ? 1.0 : 0.8);
@@ -672,7 +901,7 @@ function enemyUpdate(e, dt){
         hideLaser();
         addTracer(from, new THREE.Vector3(S.px, 1.3, S.pz), 0xff4030, 0.15);
         addMuzzle(from);
-        if (playerInCover()){ showMsg('BLOCKED', true, 500); }
+        if (shotBlockedByLane(e)){ showMsg('BLOCKED', true, 500); }
         else damagePlayer();
         e.state = 'incover'; e.stateT = 0;   // after firing, sniper returns to cover
       }
@@ -684,9 +913,9 @@ function enemyFire(e){
   var from = new THREE.Vector3(e.mesh.position.x, 1.5, e.z);
   var to = new THREE.Vector3(S.px, 1.3, S.pz);
   addMuzzle(from);
-  if (playerInCover()){
+  if (shotBlockedByLane(e)){
     var c = S.cover.obj;
-    var bt = c ? new THREE.Vector3(c.x, 1.2, c.z - 0.5) : to;
+    var bt = c ? new THREE.Vector3(c.cx, 1.2, c.cz - 0.5) : to;
     addTracer(from, bt, 0xff8060, 0.12);
     showMsg('BLOCKED', true, 400);
     return;
@@ -695,6 +924,204 @@ function enemyFire(e){
   /* normal-enemy accuracy while exposed is placeholder tuning (not in approved params) */
   if (Math.random() < 0.35) damagePlayer();
   else showMsg('敵の弾が逸れた', true, 400);
+}
+
+/* ===== v1.2: rockets, explosions, car flips ===== */
+var rockets = [];     // {grp, pos, dir, dist, maxDist, targetObj, sourceSide, smokeT}
+var explosions = [];  // {mesh, t}
+var puffs = [];       // {s, t, life, vx, vy, vz, grow}
+var flipCount = 0;
+var puffTex = glowSpriteTexture();
+function spawnPuff(pos, color, scale, life, vel){
+  var m = new THREE.SpriteMaterial({map: puffTex, color: color, transparent: true, opacity: 0.55, depthWrite: false});
+  var s = new THREE.Sprite(m);
+  s.position.copy(pos); s.scale.set(scale, scale, 1);
+  scene.add(s);
+  puffs.push({s: s, t: 0, life: life, vx: vel ? vel.x : 0, vy: vel ? vel.y : 0, vz: vel ? vel.z : 0, grow: scale * 1.6});
+}
+function explodeAt(pos){
+  var mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10),
+    new THREE.MeshBasicMaterial({color: 0xff8a30, transparent: true, opacity: 0.9, depthWrite: false}));
+  mesh.position.copy(pos); mesh.scale.set(0.4, 0.4, 0.4);
+  scene.add(mesh);
+  explosions.push({mesh: mesh, t: 0});
+  for (var i = 0; i < 9; i++){
+    var a = Math.random() * Math.PI * 2, r = 0.6 + Math.random() * 1.1;
+    spawnPuff(pos, i < 4 ? 0xffa040 : 0x777777, 0.7 + Math.random() * 0.5, 0.55 + Math.random() * 0.3,
+      new THREE.Vector3(Math.cos(a) * r, 1.2 + Math.random() * 1.4, Math.sin(a) * r));
+  }
+}
+function spawnRocket(from, targetPos, targetObj, sourceSide){
+  var grp = new THREE.Group();
+  var body = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.85, 8),
+    new THREE.MeshStandardMaterial({color: 0x9aa0a8, metalness: 0.6, roughness: 0.4}));
+  body.rotation.x = Math.PI / 2; grp.add(body);
+  var head = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 8),
+    new THREE.MeshBasicMaterial({color: 0xffd23e}));
+  head.rotation.x = Math.PI / 2; head.position.z = 0.55; grp.add(head);
+  var glow = new THREE.Sprite(new THREE.SpriteMaterial({map: puffTex, color: 0xffa030, transparent: true, opacity: 0.9, depthWrite: false}));
+  glow.scale.set(0.85, 0.85, 1); glow.position.z = -0.5; grp.add(glow);
+  grp.position.copy(from);
+  scene.add(grp);
+  var dir = new THREE.Vector3().subVectors(targetPos, from);
+  var maxDist = dir.length(); dir.normalize();
+  grp.lookAt(from.clone().add(dir));
+  rockets.push({grp: grp, pos: from.clone(), dir: dir, dist: 0, maxDist: maxDist,
+                targetObj: targetObj || null, sourceSide: sourceSide, smokeT: 0});
+  showMsg('ロケット接近！', false, 900);
+}
+function tryFireRocket(){
+  var best = null, bestDz = 1e9;
+  enemies.forEach(function(e){
+    if (!e.alive || !e.active || e.kind !== 'normal') return;
+    var dz = e.z - S.pz;
+    if (dz > 0 && dz <= 45 && dz < bestDz){ bestDz = dz; best = e; }
+  });
+  if (!best) return false;
+  var from = new THREE.Vector3(best.mesh.position.x, 1.5, best.z);
+  /* lane rule: a rocket from the opposite side is aimed at the object row
+     (the cover object the player is using), not at the player */
+  if (S.cover && S.cover.obj && shotBlockedByLane(best)){
+    var o = S.cover.obj;
+    spawnRocket(from, new THREE.Vector3(o.cx, 1.0, o.cz), o, best.side);
+  } else {
+    spawnRocket(from, new THREE.Vector3(S.px, 1.0, S.pz), null, best.side);
+  }
+  return true;
+}
+function impactObstacle(o, pos){
+  explodeAt(pos);
+  if (o.kind === 'car') launchCar(o, pos);
+}
+function launchCar(o, blastPos){
+  if (o.flipAnim) return;
+  var dx = o.cx - blastPos.x, dz = o.cz - blastPos.z;
+  var dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
+  var vy = 9.8 + Math.random() * 1.6;
+  var flipped = Math.random() < 0.5;
+  o.flipAnim = {
+    t: 0, y: 0, vy: vy, vx: dx * 2.4, vz: dz * 2.4 - 1.2,
+    rx: 0, ry: o.rot, rz: 0,
+    spinX: (flipped ? Math.PI : 2 * Math.PI) / (2 * vy / 20),
+    targetFlipped: flipped,
+    targetYaw: o.rot + (Math.random() - 0.5) * 1.4,
+    bounces: 0
+  };
+  /* the cover the player was using is gone: they are exposed, unharmed */
+  if (S.cover && S.cover.obj === o){
+    leaveCover(); S.lane = null; S.mode = 'stop';
+    showMsg('カバーが吹き飛んだ！', true, 800);
+  }
+}
+function findLandingSpot(o){
+  var r = Math.max(o.hx, o.hz);
+  var cands = [[o.cx, o.cz]];
+  [1.6, 3.2].forEach(function(d){
+    cands.push([o.cx + d, o.cz], [o.cx - d, o.cz], [o.cx, o.cz + d], [o.cx, o.cz - d],
+               [o.cx + d, o.cz + d], [o.cx - d, o.cz - d], [o.cx + d, o.cz - d], [o.cx - d, o.cz + d]);
+  });
+  for (var i = 0; i < cands.length; i++){
+    var x = Math.max(-5.0, Math.min(5.0, cands[i][0]));
+    var z = Math.max(3, Math.min(P.STREET_LEN - 3, cands[i][1]));
+    if (Math.hypot(x - S.px, z - S.pz) < 1.7) continue;   // never land on the player
+    var ok = true;
+    for (var j = 0; j < obstacles.length; j++){
+      var q = obstacles[j];
+      if (q === o) continue;
+      if (pointInFootprint(q, x, z, r * 0.7)){ ok = false; break; }
+    }
+    if (ok) return [x, z];
+  }
+  return [o.cx, o.cz];
+}
+function settleCar(o){
+  var f = o.flipAnim;
+  var spot = findLandingSpot(o);
+  o.cx = spot[0]; o.cz = spot[1];
+  o.rot = f.targetYaw;
+  o.flipped = f.targetFlipped;
+  o.flipAnim = null;
+  o.mesh.rotation.set(o.flipped ? Math.PI : 0, o.rot, 0);
+  o.mesh.position.set(o.cx, o.pivot, o.cz);
+  if (o.shadow) o.shadow.position.set(o.cx, 0.02, o.cz);
+  flipCount++;
+}
+function updateCars(dt){
+  obstacles.forEach(function(o){
+    var f = o.flipAnim;
+    if (!f) return;
+    f.t += dt;
+    if (f.y > 0 || f.vy > 0){
+      f.vy -= 20 * dt;
+      f.y += f.vy * dt;
+      o.cx += f.vx * dt;
+      o.cz += f.vz * dt;
+      f.rx += f.spinX * dt;
+      f.ry += (f.targetYaw - f.ry) * Math.min(1, dt * 2.5);
+      f.rz = Math.sin(f.t * 9) * 0.22 * Math.max(0, 1 - f.t / 1.1);
+      if (f.y <= 0){
+        f.y = 0;
+        if (Math.abs(f.vy) > 3 && f.bounces < 1){
+          f.vy = Math.abs(f.vy) * 0.32; f.bounces++;
+        } else { settleCar(o); return; }
+      }
+    }
+    o.mesh.position.set(o.cx, o.pivot + f.y, o.cz);
+    o.mesh.rotation.set(f.rx, f.ry, f.rz);
+    if (o.shadow) o.shadow.position.set(o.cx, 0.02, o.cz);
+  });
+}
+function updateRockets(dt){
+  for (var i = rockets.length - 1; i >= 0; i--){
+    var r = rockets[i];
+    var step = P.ROCKET_SPEED * dt;
+    r.pos.addScaledVector(r.dir, step);
+    r.dist += step;
+    r.grp.position.copy(r.pos);
+    r.smokeT += dt;
+    if (r.smokeT > 0.03){
+      r.smokeT = 0;
+      spawnPuff(r.pos, 0xbbbbbb, 0.34, 0.55, new THREE.Vector3(0, 0.35, 0));
+    }
+    var done = false;
+    for (var j = 0; j < obstacles.length; j++){
+      if (pointInFootprint(obstacles[j], r.pos.x, r.pos.z, 0.05)){
+        impactObstacle(obstacles[j], r.pos); done = true; break;
+      }
+    }
+    if (!done && !r.targetObj){
+      var pd = Math.hypot(r.pos.x - S.px, r.pos.z - S.pz);
+      if (pd < 0.55){
+        explodeAt(r.pos);
+        if (!S.cover) damagePlayer();
+        else showMsg('間一髪！', true, 500);
+        done = true;
+      }
+    }
+    if (!done && r.dist > r.maxDist + 4){ explodeAt(r.pos); done = true; }
+    if (done){ scene.remove(r.grp); rockets.splice(i, 1); }
+  }
+  for (var k = explosions.length - 1; k >= 0; k--){
+    var ex = explosions[k]; ex.t += dt;
+    var s = 0.4 + ex.t * 7.5;
+    ex.mesh.scale.set(s, s, s);
+    ex.mesh.material.opacity = Math.max(0, 0.9 * (1 - ex.t / 0.45));
+    if (ex.t > 0.45){ scene.remove(ex.mesh); explosions.splice(k, 1); }
+  }
+  for (var m = puffs.length - 1; m >= 0; m--){
+    var pf = puffs[m]; pf.t += dt;
+    pf.s.position.x += pf.vx * dt; pf.s.position.y += pf.vy * dt; pf.s.position.z += pf.vz * dt;
+    var ns = pf.s.scale.x + pf.grow * dt;
+    pf.s.scale.set(ns, ns, 1);
+    pf.s.material.opacity = Math.max(0, 0.55 * (1 - pf.t / pf.life));
+    if (pf.t > pf.life){ scene.remove(pf.s); puffs.splice(m, 1); }
+  }
+}
+function clearRockets(){
+  rockets.forEach(function(r){ scene.remove(r.grp); });
+  explosions.forEach(function(e){ scene.remove(e.mesh); });
+  puffs.forEach(function(p){ scene.remove(p.s); });
+  rockets = []; explosions = []; puffs = []; flipCount = 0;
 }
 
 /* ===== Touch / mouse swipe ===== */
@@ -784,50 +1211,88 @@ function loop(){
   var dt = Math.min(0.05, (now - lastT)/1000); lastT = now;
   if (S.phase === 'play'){
     S.time += dt;
-    /* movement */
+    /* movement (v1.2: every positional change passes resolveCollision,
+       so the player can never sink into a cover object) */
     if (S.backstepAnim){
       /* v1.1 backstep: ~2 m hop over BACKSTEP_S with ease-out, then stopped */
       var ba = S.backstepAnim; ba.t += dt / P.BACKSTEP_S;
       var bk = Math.min(1, ba.t), be = 1 - (1 - bk) * (1 - bk);
-      S.pz = ba.fromZ + (ba.toZ - ba.fromZ) * be;
-      if (bk >= 1){ S.pz = ba.toZ; S.backstepAnim = null; S.mode = 'stop'; updateHUD(); }
+      var br = resolveCollision(S.px, ba.fromZ + (ba.toZ - ba.fromZ) * be);
+      S.px = br[0]; S.pz = br[1];
+      if (bk >= 1){ S.backstepAnim = null; S.mode = 'stop'; updateHUD(); }
+    } else if (S.laneAnim){
+      /* v1.2: step back within the lane (no previous cover object) */
+      var la = S.laneAnim; la.t += dt / 0.3;
+      var lk = Math.min(1, la.t), le = 1 - (1 - lk) * (1 - lk);
+      var lr = resolveCollision(S.px, la.fromZ + (la.toZ - la.fromZ) * le);
+      S.px = lr[0]; S.pz = lr[1];
+      if (lk >= 1){ S.laneAnim = null; updateHUD(); }
     } else if (!S.cover){
       if (S.mode === 'forward'){
-        var spd = (S.time < S.dashUntil) ? P.DASH_SPEED : P.WALK_SPEED; // v1.1 dash burst
-        S.pz = Math.min(P.STREET_LEN + 2, S.pz + spd * dt);
+        var spd = (S.time < S.dashUntil && !S.lane) ? P.DASH_SPEED : P.WALK_SPEED; // dash: centre lane only
+        var fr = resolveCollision(S.px, S.pz + spd * dt); S.px = fr[0]; S.pz = fr[1];
       }
-      else if (S.mode === 'back') S.pz = Math.max(0, S.pz - P.BACK_SPEED * dt);
+      else if (S.mode === 'back'){
+        var kr = resolveCollision(S.px, S.pz - P.BACK_SPEED * dt); S.px = kr[0]; S.pz = kr[1];
+      }
     }
-    /* cover move animation */
+    /* cover move animation: follow the transit path at a fixed speed,
+       collision-resolved every frame */
     if (S.coverAnim){
-      var a = S.coverAnim; a.t += dt / 0.28;
-      var k = Math.min(1, a.t);
-      S.px += (a.tx - S.px) * (0.35 + k*0.4);
-      S.pz += (a.tz - S.pz) * (0.35 + k*0.4);
-      if (k >= 1){ S.px = a.tx; S.pz = a.tz; S.coverAnim = null; updateHUD(); }
+      var a = S.coverAnim;
+      var wp = a.path[a.seg];
+      var wdx = wp[0] - S.px, wdz = wp[1] - S.pz;
+      var wdist = Math.hypot(wdx, wdz);
+      var wstep = 11 * dt;
+      if (wdist <= Math.max(wstep, 0.02)){
+        var wr = resolveCollision(wp[0], wp[1]); S.px = wr[0]; S.pz = wr[1];
+        a.seg++;
+        if (a.seg >= a.path.length){ S.coverAnim = null; updateHUD(); }
+      } else {
+        var mr = resolveCollision(S.px + wdx / wdist * wstep, S.pz + wdz / wdist * wstep);
+        S.px = mr[0]; S.pz = mr[1];
+      }
     } else if (!S.cover){
-      S.px += (0 - S.px) * Math.min(1, dt*6); // drift back to lane centre when exposed
+      /* drift back toward the lane centre — or stay at the lane x in a lane */
+      var driftTo = S.lane ? S.laneX : 0;
+      var dr = resolveCollision(S.px + (driftTo - S.px) * Math.min(1, dt * 6), S.pz);
+      S.px = dr[0]; S.pz = dr[1];
     }
-    /* walk animation (v1: sprite bob/pulse; outfit 1 alternates real back-view walk frames) */
-    var moving = (S.mode !== 'stop' && !S.cover) || !!S.coverAnim || !!S.backstepAnim;
-    if (moving) S.walkPhase += dt * 9; else S.walkPhase *= 0.8;
+    /* v1.2 rocket cadence: second half of the stage, ~18 s global cooldown */
+    if (S.pz > P.ROCKET_FROM_Z){
+      if (S.rocketNextAt === Infinity) S.rocketNextAt = S.time + 5;
+      else if (S.time >= S.rocketNextAt){
+        S.rocketNextAt = S.time + (tryFireRocket() ? P.ROCKET_CD_S : 2);
+      }
+    }
+    updateRockets(dt);
+    updateCars(dt);
+    /* walk animation (v1.2: real leg-phase cycles from the sheets.
+       NO cover squash any more — the sprite keeps its full height in
+       cover; hiding is expressed by position/occlusion only.) */
+    var transiting = !!S.coverAnim;
+    var spdNow = S.backstepAnim || S.laneAnim ? 0 :
+                 (S.mode === 'forward' && !S.cover) ? ((S.time < S.dashUntil && !S.lane) ? P.DASH_SPEED : P.WALK_SPEED) :
+                 (S.mode === 'back' && !S.cover) ? P.BACK_SPEED : 0;
+    var moving = spdNow > 0 || transiting;
+    if (moving) S.walkClock += dt * (transiting ? P.WALK_SPEED : spdNow) / P.STRIDE_M; // in steps
+    var cycle = WALK_CYCLES[curOutfit];
+    var fullCycle = cycle.length >= 4;
+    if (moving && cycle.length > 1){
+      var seq = cycle;
+      if (S.mode === 'back' && !transiting && cycle.length >= 4) seq = [cycle[0], cycle[3], cycle[2], cycle[1]]; // reverse order
+      var frameSteps = seq.length >= 4 ? 0.5 : 1.0;   // half a step per frame (full cycles)
+      var idx = Math.floor(S.walkClock / frameSteps) % seq.length;
+      setSprite(seq[idx]);
+    } else {
+      setSprite('o' + (curOutfit + 1) + '-idle');
+    }
     playerMesh.position.set(S.px, 0, S.pz); // invisible anchor kept in sync
-    var crouchTarget = (S.cover && !S.coverAnim) ? 0.82 : 1.0;
-    S.spriteCrouch += (crouchTarget - S.spriteCrouch) * Math.min(1, dt * 10);
-    if (curOutfit === 0){
-      /* outfit 1 has genuine back-view walk frames: alternate them while moving */
-      var want = idleTex[0];
-      if (moving) want = (Math.floor(S.walkPhase / 1.55) % 2 === 0) ? walkTexA : walkTexB;
-      if (playerSprite.material.map !== want){ playerSprite.material.map = want; }
-    } else if (playerSprite.material.map !== idleTex[curOutfit]){
-      playerSprite.material.map = idleTex[curOutfit];
-    }
     var key = spriteKeyNow();
     var aspect = texAspect[key] || 0.5;
-    var bob = moving ? Math.abs(Math.sin(S.walkPhase)) * 0.055 : 0;
-    var pulse = moving ? 1 + Math.sin(S.walkPhase * 2) * 0.015 : 1;
-    if (S.time < S.leanUntil) pulse *= 1.04; // firing lean
-    var sh = SPRITE_H * S.spriteCrouch * pulse;
+    var bob = (moving && fullCycle) ? Math.abs(Math.sin(S.walkClock * Math.PI)) * 0.03 : 0;
+    var pulse = (S.time < S.leanUntil) ? 1.04 : 1; // firing lean (kept from v1)
+    var sh = SPRITE_H * pulse;
     playerSprite.scale.set(sh * aspect, sh, 1);
     playerSprite.position.set(S.px, sh / 2 + bob, S.pz + (S.time < S.leanUntil ? 0.12 : 0));
     playerShadow.position.set(S.px, 0.02, S.pz);
@@ -864,14 +1329,47 @@ function loop(){
 /* debug/verification hook */
 window.RLA = {
   get state(){ return {phase:S.phase, mode:S.mode, px:S.px, pz:S.pz, cover:S.cover?S.cover.side:null,
-    dashing: S.time < S.dashUntil && S.mode==='forward' && !S.cover, backstepping: !!S.backstepAnim,
+    dashing: S.time < S.dashUntil && S.mode==='forward' && !S.cover && !S.lane, backstepping: !!S.backstepAnim,
     inCover: playerInCover(), life:S.life, kills:S.kills, shots:S.shotsFired,
     outfit: S.outfit, sprite: spriteKeyNow(),
+    /* v1.2 verification surface */
+    lane: S.lane, spriteScaleY: playerSprite.scale.y,
+    coverKind: (S.cover && S.cover.obj) ? S.cover.obj.kind : null,
+    coverZ: (S.cover && S.cover.obj) ? S.cover.obj.cz : null,
+    flips: flipCount, rocketActive: rockets.length > 0,
+    obstacles: obstacles.map(function(o){ return {x:o.cx, z:o.cz, hx:o.hx, hz:o.hz, rot:o.rot,
+      kind:o.kind, type:o.type, cover:o.cover, flipped:o.flipped}; }),
     enemies: enemies.map(function(e){return {kind:e.kind, side:e.side, z:e.z, alive:e.alive, active:e.active, state:e.state};})}; },
   swipe: onSwipe,
   teleport: function(z){ S.pz = z; },
+  /* v1.2: place the player deterministically (clears cover/lane/anims) */
+  setPos: function(x, z){
+    leaveCover(); S.lane = null; S.laneAnim = null; S.backstepAnim = null; S.mode = 'stop';
+    var r = resolveCollision(x, z); S.px = r[0]; S.pz = r[1];
+  },
+  /* v1.2: one movement step through the game's own collision resolve */
+  debugMove: function(dx, dz){
+    var r = resolveCollision(S.px + dx, S.pz + dz); S.px = r[0]; S.pz = r[1];
+    return [S.px, S.pz];
+  },
+  /* v1.2: fire a rocket at the car the player covers behind (or the first
+     cover car ahead), from 15 m beyond it */
+  debugRocketAtCover: function(){
+    var o = (S.cover && S.cover.obj && S.cover.obj.kind === 'car') ? S.cover.obj : null;
+    if (!o){ for (var i = 0; i < covers.length; i++){ if (covers[i].kind === 'car' && covers[i].cz > S.pz){ o = covers[i]; break; } } }
+    if (!o) return false;
+    spawnRocket(new THREE.Vector3(o.cx, 1.5, o.cz + zExtent(o) + 0.8),
+                new THREE.Vector3(o.cx, 1.0, o.cz), o, o.cx > 0 ? 'right' : 'left');
+    return true;
+  },
+  /* v1.2: fire a rocket straight at the player from 13 m ahead */
+  debugRocketAtPlayer: function(){
+    spawnRocket(new THREE.Vector3(S.px, 1.4, S.pz + 13), new THREE.Vector3(S.px, 1.0, S.pz), null, 'left');
+    return true;
+  },
   selectOutfit: function(i){ if (S.phase==='outfit') selectOutfit(i); },
-  start: function(){ if (S.phase==='start') tapToStart(); }
+  start: function(){ if (S.phase==='start') tapToStart(); },
+  setGod: function(v){ godMode = !!v; }
 };
 
 fit();
