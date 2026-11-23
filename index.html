@@ -115,7 +115,7 @@
   <div id="start" class="overlay">
     <img src="logo.jpg" alt="REDLINE AGENT">
     <div class="starttap">タップではじめる</div>
-    <div class="version">REDLINE AGENT prototype v1.7</div>
+    <div class="version">REDLINE AGENT prototype v1.8</div>
   </div>
   <div id="outfit" class="overlay hidden">
     <div class="otitle">AGENT OUTFIT — 衣装選択</div>
@@ -549,7 +549,7 @@ var OUTFITS = [
     start: 'assets/rei-outfits/frames/o1-start.png', clear: 'assets/rei-outfits/frames/o1-clear.png' },
   { name: 'ダークスーツ＋ワルサーP38', idle: 'assets/rei-outfits/frames/o2-idle.png',
     walkA: 'assets/rei-outfits/frames/o2-walk-a.png', walkB: 'assets/rei-outfits/frames/o2-walk-b.png',
-    readyB: 'assets/rei-outfits/frames/o2-ready-b.png',
+    readyA: 'assets/rei-outfits/frames/o2-ready-a.png', readyB: 'assets/rei-outfits/frames/o2-ready-b.png',
     shoot: 'assets/rei-outfits/frames/o2-shoot.png',
     start: 'assets/rei-outfits/frames/o2-start.png', clear: 'assets/rei-outfits/frames/o2-clear.png' },
   { name: '海兵隊迷彩＋M40',           idle: 'assets/rei-outfits/frames/o3-idle.png',
@@ -1546,37 +1546,110 @@ function clearRockets(){
   rockets = []; explosions = []; puffs = []; flipCount = 0;
 }
 
-/* ===== Touch / mouse swipe ===== */
-var tsx=0, tsy=0, tst=0;
-app.addEventListener('touchstart', function(ev){ var t=ev.changedTouches[0]; tsx=t.clientX; tsy=t.clientY; tst=performance.now(); curTx=t.clientX; curTy=t.clientY; }, {passive:true});
-var curTx=0, curTy=0;
-app.addEventListener('touchmove', function(ev){ var t=ev.changedTouches[0]; curTx=t.clientX; curTy=t.clientY; }, {passive:true});
-/* v1.3: if the browser hijacks a gesture (touchcancel instead of
-   touchend), still deliver the swipe from the last tracked position —
-   a cancelled gesture must never eat the player's input */
-app.addEventListener('touchcancel', function(){ lastTouchEndT = performance.now(); handlePointerEnd(curTx-tsx, curTy-tsy); }, {passive:true});
+/* ===== Touch / mouse swipe =====
+   v1.8 input rework. Diagnosis of the v1.3–v1.7 handler (real-device
+   report: swipes still "stick" / fail to register):
+   (1) A swipe fired ONLY on touchend. Nothing at all happened until
+       the finger lifted, and a gesture whose release was swallowed —
+       finger sliding onto an isolated UI button (its touchend is
+       stopPropagation'd), an OS interruption, an overlay appearing
+       mid-gesture — lost the input completely.
+   (2) changedTouches[0] was used with NO touch-identifier tracking:
+       a second finger's touchstart overwrote the first gesture's
+       origin, its touchmove overwrote the tracked position, and its
+       touchend fired a swipe computed from garbage deltas.
+   (3) Direction was classified from the TOTAL displacement at
+       release, so a normal arcing thumb swipe could flip axis by the
+       time the finger lifted.
+   (4) The 24 px both-axes tap box ate short, quick flicks.
+   New engine: track ONE touch by identifier (extra fingers are
+   ignored entirely). A swipe FIRES the moment the displacement
+   crosses SWIPE_PX during touchmove, with the direction locked at
+   firing; one gesture = one swipe, and holding after firing never
+   re-fires (the 350 ms double-swipe logic lives in onSwipe and now
+   gets earlier, cleaner timestamps). touchend still resolves a
+   gesture that crossed the threshold without move events (coalesced
+   or synthetic input); touchcancel resolves from the last known
+   position; both fully reset the tracker. A tracker whose end event
+   was swallowed is dropped when the next touchstart proves its
+   finger is gone. Taps keep the old routing (menus advance, drone
+   view ends, play does nothing). Touches starting on UI buttons
+   never reach this layer at all (isolate() in the v1.7 UI section). */
+var SWIPE_PX = 24;
+var gTouch = null; // {id, x0, y0, x, y, fired}
 var lastTouchEndT = 0;
-app.addEventListener('touchend', function(ev){
-  var t=ev.changedTouches[0];
-  lastTouchEndT = performance.now();
-  handlePointerEnd(t.clientX-tsx, t.clientY-tsy);
-}, {passive:true});
-var msx=null, msy=null;
-app.addEventListener('mousedown', function(ev){ msx=ev.clientX; msy=ev.clientY; });
-app.addEventListener('mouseup', function(ev){
-  if (msx===null) return;
-  var dx = ev.clientX - msx, dy = ev.clientY - msy; msx=null;
-  if (performance.now() - lastTouchEndT < 700) return; // v1.1: ignore the compat mouse event after a touch (double-advance)
-  handlePointerEnd(dx, dy);
-});
-function handlePointerEnd(dx, dy){
+function gestureRoute(dx, dy, isTap){
   if (settingsOpen || equipOpen) return; // v1.7: menus own the input while open
   if (S.phase !== 'play'){ tapToStart(); return; }
-  if (droneActive()){ endDrone(); return; } // v1.7: any tap ends the drone view early
-  if (Math.abs(dx) < 24 && Math.abs(dy) < 24) return; // tap: no action in play
-  if (Math.abs(dx) > Math.abs(dy)) onSwipe(dx>0 ? 'right' : 'left');
-  else onSwipe(dy<0 ? 'up' : 'down');
+  if (droneActive()){ endDrone(); return; } // v1.7: any gesture ends the drone view early
+  if (isTap) return; // tap: no action in play
+  if (Math.abs(dx) > Math.abs(dy)) onSwipe(dx > 0 ? 'right' : 'left');
+  else onSwipe(dy < 0 ? 'up' : 'down');
 }
+function gestureResolve(dx, dy){ // at gesture end/cancel, if it never fired during move
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_PX) gestureRoute(dx, dy, true);
+  else gestureRoute(dx, dy, false);
+}
+app.addEventListener('touchstart', function(ev){
+  if (gTouch){
+    var alive = false;
+    for (var j = 0; j < ev.touches.length; j++) if (ev.touches[j].identifier === gTouch.id) alive = true;
+    if (alive) return; // a gesture is already tracked: ignore the extra finger
+    gTouch = null;     // the tracked finger's end was swallowed: drop the stale tracker
+  }
+  var t = ev.changedTouches[0];
+  gTouch = { id: t.identifier, x0: t.clientX, y0: t.clientY, x: t.clientX, y: t.clientY, fired: false };
+}, {passive:true});
+app.addEventListener('touchmove', function(ev){
+  if (!gTouch) return;
+  for (var i = 0; i < ev.changedTouches.length; i++){
+    var t = ev.changedTouches[i];
+    if (t.identifier !== gTouch.id) continue;
+    gTouch.x = t.clientX; gTouch.y = t.clientY;
+    if (!gTouch.fired){
+      var dx = gTouch.x - gTouch.x0, dy = gTouch.y - gTouch.y0;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) >= SWIPE_PX){
+        gTouch.fired = true; // direction locks here; the rest of this gesture is inert
+        gestureRoute(dx, dy, false);
+      }
+    }
+  }
+}, {passive:true});
+function endTouch(ev, cancelled){
+  if (!gTouch) return;
+  for (var i = 0; i < ev.changedTouches.length; i++){
+    var t = ev.changedTouches[i];
+    if (t.identifier !== gTouch.id) continue;
+    if (!cancelled){ gTouch.x = t.clientX; gTouch.y = t.clientY; }
+    lastTouchEndT = performance.now();
+    if (!gTouch.fired) gestureResolve(gTouch.x - gTouch.x0, gTouch.y - gTouch.y0);
+    gTouch = null;
+    return;
+  }
+  /* an end/cancel for some OTHER finger: the tracked gesture continues */
+}
+app.addEventListener('touchend', function(ev){ endTouch(ev, false); }, {passive:true});
+app.addEventListener('touchcancel', function(ev){ endTouch(ev, true); }, {passive:true});
+/* mouse mirrors the same engine (desktop play / testing); the v1.1
+   700 ms guard still swallows compatibility mouse events that follow
+   a real touch */
+var gMouse = null;
+app.addEventListener('mousedown', function(ev){
+  if (performance.now() - lastTouchEndT < 700) return;
+  gMouse = { x0: ev.clientX, y0: ev.clientY, fired: false };
+});
+app.addEventListener('mousemove', function(ev){
+  if (!gMouse || gMouse.fired) return;
+  var dx = ev.clientX - gMouse.x0, dy = ev.clientY - gMouse.y0;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) >= SWIPE_PX){ gMouse.fired = true; gestureRoute(dx, dy, false); }
+});
+app.addEventListener('mouseup', function(ev){
+  if (!gMouse) return;
+  var g = gMouse; gMouse = null;
+  if (performance.now() - lastTouchEndT < 700) return;
+  if (!g.fired) gestureResolve(ev.clientX - g.x0, ev.clientY - g.y0);
+});
+window.addEventListener('blur', function(){ gTouch = null; gMouse = null; });
 /* ===== flow: start (logo) -> outfit select -> STAGE select (v1.6)
    -> start cut-in -> play ===== */
 /* v1.6: the stage list lives in ONE table — future stages slot in by
@@ -1621,7 +1694,16 @@ function freshProgress(){ return { cleared: STAGES.map(function(){ return false;
 var settings = { cam: 'standard' };
 var progress = freshProgress();
 var owned = [];                                        // item ids, in award order
-var equipped = { weapon: null, armor: null, companion: null };
+/* v1.8: the weapon slot has NO "none" state — every outfit already
+   carries its own weapon, so the slot's resting state is the standard
+   entry ('standard' = 標準装備（衣装の武器）: the outfit's built-in
+   weapon with the plain lock-on shot, i.e. exactly v1.7's unequipped
+   behaviour). Reward weapons replace it while equipped; unequipping
+   one returns the slot to 'standard'. Armor and companion slots keep
+   null = なし. 'standard' is NOT an ITEMS entry: it is never awarded,
+   owned, or rolled as a reward. */
+var DEFAULT_WEAPON = 'standard';
+var equipped = { weapon: DEFAULT_WEAPON, armor: null, companion: null };
 /* the item table lives below (ITEMS) — loadSave runs after it */
 function loadSave(){
   var s = loadJSON(SAVE_KEYS.settings);
@@ -1636,7 +1718,10 @@ function loadSave(){
     if (Array.isArray(it.owned)) owned = it.owned.filter(function(id){ return !!ITEMS[id]; });
     if (it.equipped) ['weapon', 'armor', 'companion'].forEach(function(slot){
       var id = it.equipped[slot];
-      equipped[slot] = (id && ITEMS[id] && ITEMS[id].slot === slot && owned.indexOf(id) >= 0) ? id : null;
+      var valid = !!(id && ITEMS[id] && ITEMS[id].slot === slot && owned.indexOf(id) >= 0);
+      /* v1.8 migration: a v1.7-era save holding weapon null (なし) — or
+         any invalid weapon value — becomes the standard weapon entry */
+      equipped[slot] = valid ? id : (slot === 'weapon' ? DEFAULT_WEAPON : null);
     });
   }
 }
@@ -1840,7 +1925,7 @@ function initData(){
   Object.keys(SAVE_KEYS).forEach(function(k){ try { localStorage.removeItem(SAVE_KEYS[k]); } catch (e) {} });
   settings = { cam: 'standard' };
   progress = freshProgress();
-  owned = []; equipped = { weapon: null, armor: null, companion: null };
+  owned = []; equipped = { weapon: DEFAULT_WEAPON, armor: null, companion: null };
   closeSettings(); equipOpen = false;
   ['clear', 'over', 'startcut', 'outfit', 'stage', 'equip'].forEach(function(id){
     document.getElementById(id).classList.add('hidden');
@@ -1863,7 +1948,12 @@ function closeEquip(){ equipOpen = false; document.getElementById('equip').class
 document.getElementById('equipopen').addEventListener('click', function(ev){ ev.stopPropagation(); openEquip(); });
 document.getElementById('equipclose').addEventListener('click', function(ev){ ev.stopPropagation(); closeEquip(); });
 function toggleEquip(slot, id){
-  if (id === null || equipped[slot] === id) equipped[slot] = null;
+  if (slot === 'weapon'){
+    /* v1.8: no "none" for weapons — tapping the standard entry, or the
+       currently equipped reward weapon, rests the slot on 標準装備 */
+    equipped.weapon = (id === DEFAULT_WEAPON || equipped.weapon === id) ? DEFAULT_WEAPON : id;
+  }
+  else if (id === null || equipped[slot] === id) equipped[slot] = null;
   else equipped[slot] = id;
   saveItems(); buildEquipScreen();
 }
@@ -1875,6 +1965,13 @@ function eqRow(slot, id){
   if (id === null){
     d.innerHTML = '<span class="eqmeta"><span class="eqname">なし</span><span class="eqdesc">装備しない</span></span>' +
                   (equipped[slot] === null ? '<span class="eqtag">装備中</span>' : '');
+  } else if (id === DEFAULT_WEAPON){
+    /* v1.8: the weapon slot's fixed default entry — the current
+       outfit's own weapon (its art already carries it; performance is
+       the plain lock-on shot). No item art: the weapon differs per
+       outfit, so the row is a labelled plate like the なし row. */
+    d.innerHTML = '<span class="eqmeta"><span class="eqname">標準装備（衣装の武器）</span><span class="eqdesc">いまの衣装の武器で戦う（標準のロックオン射撃）</span></span>' +
+                  (equipped.weapon === DEFAULT_WEAPON ? '<span class="eqtag">装備中</span>' : '');
   } else {
     var it = ITEMS[id];
     /* art contract: assets/items/<id>-select.png; while the file is
@@ -1895,7 +1992,8 @@ function buildEquipScreen(){
     var h = document.createElement('div');
     h.className = 'eqslot'; h.textContent = pair[1];
     wrap.appendChild(h);
-    wrap.appendChild(eqRow(slot, null));
+    /* v1.8: the weapon slot's fixed first row is 標準装備, not なし */
+    wrap.appendChild(slot === 'weapon' ? eqRow('weapon', DEFAULT_WEAPON) : eqRow(slot, null));
     var mine = owned.filter(function(id){ return ITEMS[id].slot === slot; });
     mine.forEach(function(id){ wrap.appendChild(eqRow(slot, id)); });
     if (!mine.length){
@@ -2204,6 +2302,8 @@ window.RLA = {
       x: compSprite.position.x, y: compSprite.position.y, z: compSprite.position.z,
       texOk: !!(equipped.companion && compTex[equipped.companion] && compTex[equipped.companion].ok) },
     settingsOpen: settingsOpen, equipOpen: equipOpen,
+    /* v1.8 verification surface: the swipe gesture tracker */
+    gesture: { tracked: !!gTouch, fired: gTouch ? gTouch.fired : null },
     /* v1.3 verification surface */
     fxCount: fx.length,
     lineCount: scene.children.filter(function(c){ return c.isLine; }).length,
@@ -2255,7 +2355,7 @@ window.RLA = {
     if (!ITEMS[id] || owned.indexOf(id) < 0) return false;
     equipped[ITEMS[id].slot] = id; saveItems(); return true;
   },
-  unequipSlot: function(slot){ if (slot in equipped){ equipped[slot] = null; saveItems(); } },
+  unequipSlot: function(slot){ if (slot in equipped){ equipped[slot] = (slot === 'weapon') ? DEFAULT_WEAPON : null; saveItems(); } },
   debugAward: function(id){ return awardItem(id); }, // verification-only: grants an item without the reward roll
   pressDrone: pressDrone,
   setDroneRoll: function(v){ droneForceRoll = v; },
