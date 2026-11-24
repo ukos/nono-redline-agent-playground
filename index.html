@@ -115,7 +115,7 @@
   <div id="start" class="overlay">
     <img src="logo.jpg" alt="REDLINE AGENT">
     <div class="starttap">タップではじめる</div>
-    <div class="version">REDLINE AGENT prototype v1.8</div>
+    <div class="version">REDLINE AGENT prototype v1.9</div>
   </div>
   <div id="outfit" class="overlay hidden">
     <div class="otitle">AGENT OUTFIT — 衣装選択</div>
@@ -206,8 +206,40 @@ var P = {
   ROCKET_FROM_Z: 60,      // rockets only appear in the second half of the stage
   ROCKET_CD_S: 18,        // global rocket cooldown (s)
   ROCKET_SPEED: 14,       // rocket travel speed (m/s)
-  LANE_X: 4.1             // |x| of the cover rows = the edge lanes
+  LANE_X: 6.9,            // v1.9: |x| of the EDGE cover rows (far LEFT/RIGHT edges of the street, on the sidewalks, inside the building lines). v1.9 correction: THREE playable lanes — centre (x=0) PLUS both edges; the first v1.9 build wrongly abolished the centre lane (see BUILD-NOTES)
+  CENTRE_COVER_X: 2.2,    // v1.9 correction 2: |x| of the centre lane's FLANKING covers — the centre lane is an open walking path down the middle (x = 0 itself stays clear); its covers sit beside the path, alternating sides
+  STOP_COVER_M: 9         // v1.9 (was 7 in v1.5): from-stop side-swipe cover search window |dz| (m); stage-1 cover spacing is 9.5 m, so a stopped player always has a cover in range
 };
+
+/* ===== v1.9 correction: THREE lanes — centre (x=0) + both street edges
+   (x=+/-LANE_X), ordered left (+x = screen-left) / centre / right.
+   A side swipe shifts the player ONE lane in that direction; at the
+   outermost lane an outward swipe keeps the classic in-lane behaviour
+   (cover re-entry, or the A-scheme shot from cover). Lane protection
+   (v1.2, generalised): fire is blocked only between NON-ADJACENT lanes
+   (left edge <-> right edge); the centre lane is adjacent to both, so
+   a player in centre cover can be hit from either side, and a
+   centre-lane enemy can hit a covered player on any lane.
+   v1.9 correction 2: the centre lane is an open walking path — its
+   covers flank it at |x| = CENTRE_COVER_X (still read as 'centre' by
+   laneOfX), and three sideways-van blockers sit ON the path, forcing
+   the occasional detour via an edge lane. ===== */
+var LANE_ORDER = ['left', 'centre', 'right'];
+function laneOfX(x){ return x > 3 ? 'left' : (x < -3 ? 'right' : 'centre'); }
+function laneXOf(l){ return l === 'left' ? P.LANE_X : (l === 'right' ? -P.LANE_X : 0); }
+function laneIndex(l){ return LANE_ORDER.indexOf(l); }
+function laneName(l){ return l === 'left' ? '左端' : (l === 'right' ? '右端' : '中央'); }
+function coversOnLane(l){
+  return covers.filter(function(c){ return !c.flipAnim && laneOfX(c.cx) === l; });
+}
+function playerLane(){
+  if (S.cover) return S.cover.side;
+  if (S.lane) return S.lane;
+  return laneOfX(S.px);
+}
+/* v1.2 dash rule, generalised: dash only on the centre line (open
+   centre or the centre lane) — never in an edge lane */
+function dashLaneOk(){ return !S.lane || S.lane === 'centre'; }
 
 /* ===== visualViewport fit (same approach as FIELD GOLF) ===== */
 var app = document.getElementById('app');
@@ -245,7 +277,7 @@ function asphaltTexture(){
   g.fillStyle='#c8cdd6'; g.fillRect(124, 8, 8, 104); // centre dash segment
   var t = new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(1, P.STREET_LEN/16); return t;
 }
-var road = new THREE.Mesh(new THREE.PlaneGeometry(12, P.STREET_LEN+80), new THREE.MeshLambertMaterial({map:asphaltTexture()}));
+var road = new THREE.Mesh(new THREE.PlaneGeometry(16, P.STREET_LEN+80), new THREE.MeshLambertMaterial({map:asphaltTexture()})); // v1.9: widened 12 -> 16 m so the edge lanes run on the asphalt at the street's far edges
 road.rotation.x = -Math.PI/2; road.position.set(0, 0, P.STREET_LEN/2 - 20); scene.add(road);
 /* sidewalks: slightly raised lighter strips (boxes, so no z-fighting with the road) */
 function sidewalkTexture(){
@@ -257,7 +289,7 @@ function sidewalkTexture(){
   var t = new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(1, P.STREET_LEN/8); return t;
 }
 var walkMat = new THREE.MeshLambertMaterial({map:sidewalkTexture()});
-[-7.5, 7.5].forEach(function(x){
+[-9.5, 9.5].forEach(function(x){
   var w = new THREE.Mesh(new THREE.BoxGeometry(3, 0.12, P.STREET_LEN+80), walkMat);
   w.position.set(x, 0.06, P.STREET_LEN/2 - 20); scene.add(w);
 });
@@ -275,7 +307,7 @@ var lampGlowTex = glowSpriteTexture();
   var poleMat = new THREE.MeshLambertMaterial({color:0x232830});
   var headMat = new THREE.MeshBasicMaterial({color:0xffd9a0});
   for (var z=2, i=0; z<P.STREET_LEN; z+=21, i++){
-    var side = (i%2===0) ? -1 : 1, x = side*6.4;
+    var side = (i%2===0) ? -1 : 1, x = side*9.7;
     var grp = new THREE.Group();
     var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 4.4, 6), poleMat); pole.position.y = 2.2; grp.add(pole);
     var arm = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.07, 0.07), poleMat); arm.position.set(-side*0.5, 4.35, 0); grp.add(arm);
@@ -320,7 +352,7 @@ var bTexes = [
       var h = 13 + Math.random()*24, d = 10 + Math.random()*8, w = 8.5 + Math.random()*2.5;
       var tex = bTexes[Math.floor(Math.random()*bTexes.length)];
       var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({map: tex}));
-      var bx = side*(11.5+Math.random()*1.5);
+      var bx = side*(15.5+Math.random()*1.5); // v1.9: pushed out (inner faces >= 10 m) so the edge lanes sit inside the building lines
       m.position.set(bx, h/2, z + d/2);
       scene.add(m);
       /* roofline variation: a smaller penthouse block on some buildings */
@@ -439,34 +471,84 @@ function makeTree(x, z){
 }
 (function placeCovers(){
   var carColors=[0x5a6270, 0x39445c, 0x6e3b3b, 0x2f4f4a, 0x707a68];
-  /* v1.2 car variety for the cover rows: type/rotation schedule for the
-     right-row cars (placement order). Sideways = rot 90 deg, diagonal =
-     +/-30..40 deg. All of them stay cover-capable. */
-  var rightCarPlan = [
-    ['regular', 0], ['compact', 0], ['regular', 0], ['van', 0], ['regular', 0],
-    ['regular', Math.PI/2], ['compact', 0], ['compact', 0.61], ['regular', 0],
-    ['regular', -0.70], ['van', 0], ['truck', 0], ['regular', 0],
-    ['compact', 0], ['regular', 0], ['compact', Math.PI/2], ['regular', 0], ['truck', 0]
+  /* v1.9 LANE LAYOUT (corrected): THREE playable lanes — the centre
+     lane (x = 0) PLUS the two street-edge lanes (x = +/-P.LANE_X).
+     (The first v1.9 build misread the direction and ABOLISHED the
+     centre lane; the requirement was to ADD the edge lanes BESIDE it.)
+     Every lane carries a CONTINUOUS cover chain from start to goal:
+     spacing 9.5 m, inside the from-stop cover search window
+     (P.STOP_COVER_M = 9 m, prefer-ahead), so a stopped player always
+     has a cover in range on their own lane and on both adjacent lanes
+     — no dead zones (verified by the position sweep). The chains are
+     staggered (centre offset from both edges) so a one-lane shift also
+     lands near a cover. Type pattern repeats every 8 covers and keeps
+     the v1.2 variety (sideways + diagonal cars included); diagonal yaw
+     is mirrored per chain so cars nose toward the street centre.
+     The v1.9 decorative centre cars are REMOVED: the centre is a real
+     lane now, not scenery space (they also overlapped centre covers).
+     (Replaces the v1.2 layout: a dense car chain on one side and a
+     sparse 21 m tree chain on the other, both at |x| = 4.1.)
+     v1.9 correction 2: the centre lane is an OPEN PATH — its covers
+     FLANK the path at |x| = P.CENTRE_COVER_X instead of sitting on
+     x = 0 (see placeCentreChain below), and three sideways vans sit
+     ON the path as blockers that force a detour via an edge lane. */
+  var coverPattern = [
+    ['car', 'regular', 0], ['tree'], ['car', 'compact', 0], ['car', 'van', 0],
+    ['car', 'regular', 0.35], ['tree'], ['car', 'compact', Math.PI/2], ['car', 'truck', 0]
   ];
-  var ci = 0, ri = 0;
-  for (var z=9, i=0; z<P.STREET_LEN-4; z+=10.5, i++){
-    var side = (i%2===0) ? -1 : 1;
-    var x = side * P.LANE_X;
-    if (i%2===0){
-      var plan = rightCarPlan[ri++ % rightCarPlan.length];
-      addCar(x, z, plan[0], plan[1], true, carColors[ci++ % carColors.length]);
-    } else {
-      makeTree(x, z);
-      var plan2 = rightCarPlan[ri++ % rightCarPlan.length];
-      addCar(-x, z+5, plan2[0], plan2[1], true, carColors[ci++ % carColors.length]);
+  var ci = 0;
+  function placeChain(x, z0, mirror){
+    for (var k = 0, cz = z0; cz <= P.STREET_LEN + 2; k++, cz = z0 + 9.5 * k){ // bound includes the right chain's last cover at 199.25, just before the goal line
+      var p = coverPattern[k % coverPattern.length];
+      if (p[0] === 'tree') makeTree(x, cz);
+      else addCar(x, cz, p[1], p[1] === 'regular' && p[2] ? mirror * p[2] : p[2], true, carColors[ci++ % carColors.length]);
     }
   }
-  /* decorative cars (obstacles only, NOT cover-capable), parked closer to
-     the buildings so the centre lane and the cover rows stay usable */
-  addCar( 5.05,  35, 'regular', 0,     false, carColors[1]);
-  addCar( 4.60, 141, 'compact', 0.35,  false, carColors[3]);
-  addCar(-4.95,  98, 'van',     0,     false, carColors[2]);
-  addCar( 5.05, 160, 'regular', 0,     false, carColors[4]);
+  placeChain( P.LANE_X, 5,     1);  // left edge (+x):  covers at z = 5, 14.5, 24, ... 195
+  placeChain(-P.LANE_X, 9.25, -1);  // right edge (-x): covers at z = 9.25, 18.75, ... 199.25
+  /* v1.9 correction 2: the CENTRE lane's covers FLANK the open centre
+     path at |x| = P.CENTRE_COVER_X (2.2 m), alternating sides every
+     9.5 m (k even -> +2.2, k odd -> -2.2; same z rhythm 7, 16.5, ...,
+     197 and the same type pattern as the edges, except the sideways
+     compact becomes a straight compact — a sideways car at |x| = 2.2
+     would reach across the path — and the diagonal regular noses
+     toward the path). Nothing sits on x = 0 itself. laneOfX still
+     reads |x| = 2.2 as the centre lane (|x| < 3), so the cover
+     searches, the one-lane shifts and the protection rule are
+     unchanged; only the geometry moved off the walking line. */
+  (function placeCentreChain(){
+    for (var k = 0, cz = 7; cz <= P.STREET_LEN + 2; k++, cz = 7 + 9.5 * k){
+      var p = coverPattern[k % coverPattern.length];
+      var x = (k % 2 === 0) ? P.CENTRE_COVER_X : -P.CENTRE_COVER_X;
+      if (p[0] === 'tree') makeTree(x, cz);
+      else {
+        var mirrorC = (x > 0 ? -1 : 1); // diagonal regular noses toward the path
+        /* the LAST centre cover (k = 20, z = 197) yaws the OTHER way:
+           with the path-side yaw, its slanted south face sits across
+           the LEFT edge lane's goal-run line (freeX +3.4) and the
+           least-penetration resolver pushes the runner back in z —
+           a measured wedge at pz ≈ 194.96 in the full-suite run.
+           Yawed away, the run only clips the corner on the x axis
+           and slides past. */
+        if (k === 20) mirrorC = -mirrorC;
+        var rot = p[2] === Math.PI/2 ? 0
+                : (p[1] === 'regular' && p[2] ? mirrorC * p[2] : p[2]);
+        addCar(x, cz, p[1], rot, true, carColors[ci++ % carColors.length]);
+      }
+    }
+  })();
+  /* v1.9 correction 2: three BLOCKERS on the centre path — sideways
+     vans parked across x = 0 (footprint |x| <= 2.8, collision-expanded
+     3.05), placed as plain obstacles, NOT covers. Walking the centre
+     line is genuinely impossible at these z: the player must shift to
+     an edge lane, pass, and shift back. z = 58.3 / 105.8 / 143.8 sit
+     inside centre cover gaps (3.8 m past a station; >= 0.85 m clear of
+     every neighbouring centre cover footprint and >= 1.0 m clear of
+     the next cover spot), >= 10 m from every enemy position, and both
+     edge lanes stay fully passable at the same z. */
+  addCar(0, 58.3,  'van', Math.PI/2, false, 0x707a68);
+  addCar(0, 105.8, 'van', Math.PI/2, false, 0x5a6270);
+  addCar(0, 143.8, 'van', Math.PI/2, false, 0x39445c);
 })();
 /* --- footprint geometry (OBB) --- */
 function toLocal(o, px, pz){
@@ -488,7 +570,7 @@ function coverSpot(o){
 /* push a point out of every footprint (expanded by the player radius);
    returns [x, z]. Least-penetration axis in the object's local frame. */
 function resolveCollision(px, pz){
-  px = Math.max(-5.55, Math.min(5.55, px));
+  px = Math.max(-8.55, Math.min(8.55, px)); // v1.9: street half-width grew with the edge lanes (was 5.55)
   pz = Math.max(0, Math.min(P.STREET_LEN + 2, pz));
   for (var iter = 0; iter < 2; iter++){
     for (var j = 0; j < obstacles.length; j++){
@@ -510,9 +592,9 @@ function resolveCollision(px, pz){
 /* goal gate */
 (function goalGate(){
   var mat = new THREE.MeshBasicMaterial({color:0xffd257});
-  var p1 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6, 0.3), mat); p1.position.set(-5.5, 3, P.STREET_LEN); scene.add(p1);
-  var p2 = p1.clone(); p2.position.x = 5.5; scene.add(p2);
-  var bar = new THREE.Mesh(new THREE.BoxGeometry(11.3, 0.3, 0.3), mat); bar.position.set(0, 6, P.STREET_LEN); scene.add(bar);
+  var p1 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6, 0.3), mat); p1.position.set(-8.8, 3, P.STREET_LEN); scene.add(p1);
+  var p2 = p1.clone(); p2.position.x = 8.8; scene.add(p2);
+  var bar = new THREE.Mesh(new THREE.BoxGeometry(17.9, 0.3, 0.3), mat); bar.position.set(0, 6, P.STREET_LEN); scene.add(bar);
 })();
 
 /* --- figures (PLACEHOLDER art: simple box-figure silhouettes) --- */
@@ -542,22 +624,22 @@ playerMesh.visible = false; // v1: box figure replaced by the Rei billboard spri
    Only back-view frames are used in-game. The sheets' side-view walk/shoot
    panels are deliberately NOT used (see BUILD-NOTES v1). */
 var OUTFITS = [
-  { name: '英国紳士＋ライフル',       idle: 'assets/rei-outfits/frames/o1-idle.png',
+  { name: '英国紳士＋ライフル',       weaponName: 'ライフル', idle: 'assets/rei-outfits/frames/o1-idle.png',
     walkA: 'assets/rei-outfits/frames/o1-walk-a.png', walkD: 'assets/rei-outfits/frames/o1-walk-d.png',
     readyA: 'assets/rei-outfits/frames/o1-ready-a.png', readyB: 'assets/rei-outfits/frames/o1-ready-b.png',
     shoot: 'assets/rei-outfits/frames/o1-shoot.png',
     start: 'assets/rei-outfits/frames/o1-start.png', clear: 'assets/rei-outfits/frames/o1-clear.png' },
-  { name: 'ダークスーツ＋ワルサーP38', idle: 'assets/rei-outfits/frames/o2-idle.png',
+  { name: 'ダークスーツ＋ワルサーP38', weaponName: 'ワルサーP38', idle: 'assets/rei-outfits/frames/o2-idle.png',
     walkA: 'assets/rei-outfits/frames/o2-walk-a.png', walkB: 'assets/rei-outfits/frames/o2-walk-b.png',
     readyA: 'assets/rei-outfits/frames/o2-ready-a.png', readyB: 'assets/rei-outfits/frames/o2-ready-b.png',
     shoot: 'assets/rei-outfits/frames/o2-shoot.png',
     start: 'assets/rei-outfits/frames/o2-start.png', clear: 'assets/rei-outfits/frames/o2-clear.png' },
-  { name: '海兵隊迷彩＋M40',           idle: 'assets/rei-outfits/frames/o3-idle.png',
+  { name: '海兵隊迷彩＋M40',           weaponName: 'M40ライフル', idle: 'assets/rei-outfits/frames/o3-idle.png',
     walkA: 'assets/rei-outfits/frames/o3-walk-a.png', walkB: 'assets/rei-outfits/frames/o3-walk-b.png',
     readyA: 'assets/rei-outfits/frames/o3-ready-a.png', readyB: 'assets/rei-outfits/frames/o3-ready-b.png',
     shoot: 'assets/rei-outfits/frames/o3-shoot.png',
     start: 'assets/rei-outfits/frames/o3-start.png', clear: 'assets/rei-outfits/frames/o3-clear.png' },
-  { name: '中世の狩人＋弓',             idle: 'assets/rei-outfits/frames/o4-idle.png',
+  { name: '中世の狩人＋弓',             weaponName: '弓', idle: 'assets/rei-outfits/frames/o4-idle.png',
     walkA: 'assets/rei-outfits/frames/o4-walk-a.png', walkB: 'assets/rei-outfits/frames/o4-walk-b.png',
     readyA: 'assets/rei-outfits/frames/o4-ready-a.png', readyB: 'assets/rei-outfits/frames/o4-ready-b.png',
     shoot: 'assets/rei-outfits/frames/o4-shoot.png',
@@ -660,8 +742,9 @@ function resetState(){
     dashUntil: -1,                    // v1.1: dash active while S.time < dashUntil
     backstepAnim: null,               // v1.1: {fromZ, toZ, t} quick backward hop
     laneAnim: null,                   // v1.2: {fromZ, toZ, t} step back within the lane (no previous cover)
-    lane: null,                       // v1.2: null | 'left' | 'right' — edge lane the player is in
+    lane: null,                       // v1.2: null | 'left' | 'centre' | 'right' — lane the player is in (v1.9 correction: centre restored)
     laneX: 0,                         // v1.2: x of the current lane (cover row / dodge offset)
+    freeX: 0,                         // v1.9 correction: drift target while lane-less (0 = road centre; the centre lane's goal run sets 4.6 so the player steps around the last centre cover instead of walking dead-on into it)
     walkClock: 0,                     // v1.2: walk-cycle clock (s of movement)
     time: 0,
     outfit: curOutfit + 1,   // v1: selected outfit (1-based, for HUD/verify)
@@ -791,7 +874,7 @@ function makeEnemy(kind, x, z, side){
   grp.add(blobShadow(kind === 'heavy' ? 0.72 : 0.55, kind === 'heavy' ? 0.72 : 0.55, 0.34)); // ground the sprite
   grp.position.set(x, 0, z);
   grp.visible = false; scene.add(grp);
-  var e = {kind:kind, def:def, x:x, z:z, homeZ:z, side:side, mesh:grp, sprite:spr, alive:true, active:false,
+  var e = {kind:kind, def:def, x:x, z:z, homeZ:z, side:side, lane:laneOfX(x), mesh:grp, sprite:spr, alive:true, active:false,
            state:'idle', stateT:0, dodgeUntil:-1, baseX:x, hp:def.hp, maxHp:def.hp,
            shootFxUntil:-1, flashUntil:-1, burstLeft:0, burstT:0, shotsFired:0,
            moveTargetZ:null, deathT:0, texKey:def.aim, spriteBaseY:def.canvasH / 2 - def.padM,
@@ -818,18 +901,34 @@ function resetEnemy(e){
    agent×1 -> agent×2 -> sniper×1 -> agent+runner -> launcher×1 (z=166,
    rockets arm past 60 m) -> heavy+agent -> agent+sniper finale.
    The brief said "total 10" but its own wave list sums to 11 — the
-   waves were implemented as listed (11). */
-makeEnemy('agent',    3.4,  38, 'left');
-makeEnemy('agent',    3.6,  82, 'left');
-makeEnemy('agent',   -3.6,  86, 'right');
-makeEnemy('sniper',  -3.6, 128, 'right');
-makeEnemy('agent',    3.6, 156, 'left');
-makeEnemy('runner',  -3.6, 160, 'right');
-makeEnemy('launcher',-3.6, 166, 'right');
-makeEnemy('heavy',    3.6, 180, 'left');
-makeEnemy('agent',   -3.6, 183, 'right');
-makeEnemy('agent',    3.6, 192, 'left');
-makeEnemy('sniper',  -3.6, 195, 'right');
+   waves were implemented as listed (11).
+   v1.9: enemies stood just inside their edge cover rows.
+   v1.9 correction (THREE lanes): the same 11 enemies, same kinds, are
+   redistributed across all three lanes (L 4 / C 4 / R 3). Edge enemies
+   stand just inside their edge row (x = +/-6.45; duck to +/-7.75,
+   behind the row); centre enemies stand just inside a FLANKING cover
+   row (x = +/-1.55, beside the covers at |x| = 2.2; duck across the
+   open path to -/+1.75, just inside the opposite flanking row —
+   v1.9 correction 2 moved them off the old centre row at x = +/-0.45
+   when the covers moved off the path). Every z sits in a
+   same-LANE cover gap (nearest same-lane covers >= 3.4 m away), so
+   all three lanes are engageable and fair. The snipers sit on the
+   edges (idx 3 right, idx 9 left): a centre-lane sniper would threaten
+   every lane at once (the centre is adjacent to all), while edge
+   snipers leave the opposite edge protected by the lane rule and the
+   centre its own covers to break the approach. Appearance order by z
+   is kept ascending. */
+makeEnemy('agent',    6.45,  38,     'left');   // L edge
+makeEnemy('agent',    1.55,  78,     'left');   // centre (just inside the left flanking row)
+makeEnemy('agent',   -6.45,  90,     'right');  // R edge
+makeEnemy('sniper',  -6.45,  128.9,  'right');  // R edge
+makeEnemy('agent',   -1.55,  154,    'right');  // centre (just inside the right flanking row)
+makeEnemy('runner',   6.45,  161.75, 'left');   // L edge
+makeEnemy('launcher', 6.45,  171.25, 'left');   // L edge
+makeEnemy('heavy',    1.55,  182.75, 'left');   // centre
+makeEnemy('agent',   -6.45,  185,    'right');  // R edge
+makeEnemy('sniper',   6.45,  190.25, 'left');   // L edge
+makeEnemy('agent',   -1.55,  192.25, 'right');  // centre
 
 /* ===== FX: tracers, laser, markers ===== */
 var fx = [];
@@ -888,8 +987,8 @@ function updateHUD(){
            (S.coverAnim && S.coverAnim.kind === 'advance') ? '物陰を前進中' :
            (S.coverAnim && S.coverAnim.kind === 'retreat') ? '物陰を後退中' :
            (S.time < S.dashUntil && S.mode==='forward' && !S.cover) ? 'ダッシュ' :
-           S.cover ? '物陰（' + (S.cover.side==='left'?'左':'右') + '）' :
-           S.lane ? (S.mode==='forward' ? '路肩を前進中' : S.mode==='back' ? '路肩を後退中' : '路肩') :
+           S.cover ? '物陰（' + (S.cover.side==='left'?'左':S.cover.side==='right'?'右':'中央') + '）' :
+           S.lane ? (laneName(S.lane) + (S.mode==='forward' ? 'レーンを前進中' : S.mode==='back' ? 'レーンを後退中' : 'レーン')) :
            S.mode==='forward' ? '前進中' : S.mode==='back' ? '後退中' : '停止';
   /* v1.7: shield cooldown indicators */
   var extra = '';
@@ -907,9 +1006,9 @@ function onSwipe(dir){
     if (S.cover){ coverAdvance(+1); }              // v1.2: move to the next cover ahead on the same side
     else {
       S.mode = 'forward';
-      /* v1.2 lane rule: dash only in the centre lane — in an edge lane a
+      /* v1.2 lane rule: dash only on the centre line — in an edge lane a
          double up-swipe is just a normal forward move */
-      if (!S.lane && now - wasUp <= P.DOUBLE_MS && !S.backstepAnim){ S.dashUntil = S.time + P.DASH_S; }
+      if (dashLaneOk() && now - wasUp <= P.DOUBLE_MS && !S.backstepAnim){ S.dashUntil = S.time + P.DASH_S; }
     }
   } else if (dir === 'down'){
     var wasDown = S.lastDown; S.lastDown = now;
@@ -933,12 +1032,23 @@ function leaveCover(){ S.cover = null; S.coverAnim = null; }
 function enterCover(obj, side, kind){
   var spot = coverSpot(obj);
   S.cover = {side: side, obj: obj};
-  S.lane = side; S.laneX = obj.cx;
+  /* v1.9 correction 2: the lane's walking line is laneXOf(side), NOT
+     the cover's own x — centre covers now FLANK the path at |x| = 2.2
+     while the centre walking line stays x = 0, so leaving a centre
+     cover drifts the player back onto the open path. (For the edge
+     lanes laneXOf(side) === obj.cx as before, so nothing changes.) */
+  S.lane = side; S.laneX = laneXOf(side);
   /* v1.2 transit path: swing out to the clear corridor inside the cover
-     row (|x| = 1.6 clears every footprint, incl. sideways/diagonal cars),
-     travel along it, then step in to the cover spot — so moving between
-     covers never clips through the object the player is leaving. */
-  var corridorX = side === 'left' ? 1.6 : -1.6;
+     row, travel along it, then step in to the cover spot — so moving
+     between covers never clips through the object the player is leaving.
+     v1.9: the corridor hugs the edge lane at |x| = LANE_X - 2.2 = 4.7
+     (clears every footprint's inner edge, worst 5.2, and the centre
+     scenery cars, outer edge ~3.6) — with the lanes at the street edges
+     a cover-to-cover hop now travels ALONG the edge instead of swinging
+     out to the old centre corridor at |x| = 1.6. */
+  var corridorX = side === 'centre'
+    ? (S.px >= 0 ? 3.5 : -3.5) /* v1.9 correction 2: centre transits run at |x| = 3.5, on the side the player approaches from — outside the flanking covers' line (2.2) AND outside the centre-path blockers' expanded span (3.05), so a centre transit never has to cross a blocker */
+    : (side === 'left' ? 1 : -1) * (P.LANE_X - 2.2);
   var path = [];
   if (Math.abs(S.px - corridorX) > 0.05) path.push([corridorX, S.pz]);
   if (Math.abs(S.pz - spot.z) > 0.05) path.push([corridorX, spot.z]);
@@ -948,84 +1058,111 @@ function enterCover(obj, side, kind){
 /* v1.2 cover-to-cover movement along one side of the street.
    dirSign +1: next cover ahead; -1: previous cover. The player stays in
    the edge lane and in cover state during and after the transit. With no
-   further object: forward = stay put; backward = step back within the
-   lane (cover state drops, lane is kept). */
+   further object: backward = step back within the lane (cover state
+   drops, lane is kept); forward = the goal run (v1.9: exit the lane
+   into the open street and keep walking — see below). */
 function coverAdvance(dirSign){
   var side = S.cover.side;
-  var list = covers.filter(function(c){ return !c.flipAnim && (side === 'left' ? c.cx > 0 : c.cx < 0); });
+  var list = coversOnLane(side);
   list.sort(function(a, b){ return a.cz - b.cz; });
   var idx = list.indexOf(S.cover.obj);
   var next = (idx >= 0) ? list[idx + dirSign] : null;
+  /* v1.9 fix: S.cover.obj is null in the sidestep-dodge "cover" — the old
+     code did list.indexOf(null) = -1 and fell through, so an up-swipe
+     wrongly announced この先に物陰なし even with covers ahead. Resolve
+     to the nearest same-side cover in the advance direction instead. */
+  if (idx < 0 && !next){
+    for (var i = 0; i < list.length; i++){
+      if (dirSign > 0 && list[i].cz > S.pz + 0.01){ next = list[i]; break; }
+      if (dirSign < 0 && list[list.length - 1 - i].cz < S.pz - 0.01){ next = list[list.length - 1 - i]; break; }
+    }
+  }
   if (next){ enterCover(next, side, dirSign > 0 ? 'advance' : 'retreat'); return; }
   if (dirSign < 0){
     leaveCover();
     S.laneAnim = {fromZ: S.pz, toZ: Math.max(0, S.pz - 2.0), t: 0};
     S.mode = 'stop';
   } else {
-    showMsg('この先に物陰なし', true, 600);
+    /* v1.9: advancing past the LAST cover on a side exits the lane into
+       the open street and keeps walking — the goal run. (In v1.2 the
+       player left the lane with a centre swipe and drifted to the
+       middle. The final advance itself releases the lane on EVERY
+       lane: no cover state, and the run continues along freeX.)
+       v1.9 correction: EVERY lane's goal run steps off its lane line
+       (freeX) to pass the last cover — the last cars sit at a slant
+       (rot ±0.35), and their rotated footprints sweep across the lane
+       line ahead of the cover spot, so a straight run up the line
+       wedges against the slanted rear edge (found by the left-lane
+       playthrough: pinned at the z=195 car's rear corner). The edge
+       runs step INWARD to ±3.4, threading the gap between their own
+       last car (footprint reaches |x| ≈ 5.0) and the centre chain's
+       last car — since correction 2 that car flanks the path at +2.2
+       and its slanted corner reaches |x| ≈ 4.1, so the ±3.4 runs
+       brush past the corner on the collision resolver rather than
+       through a clear gap. The CENTRE run steps OUT to +4.6, clear
+       of that same corner: the old centre freeX (2.6, from when the
+       last centre car sat ON the path at x=0) now runs straight into
+       the flanking car's slanted south face, whose least-penetration
+       axis pushes the runner back in z — measured wedge at
+       pz ≈ 194.6 in the correction-2 playthrough. */
+    leaveCover();
+    S.lane = null;
+    S.freeX = (side === 'centre') ? 4.6 : (side === 'left' ? 3.4 : -3.4);
+    S.mode = 'forward';
+    showMsg('ゴールへ！', true, 700);
   }
 }
 function handleSide(dir, now){
   var last = S.lastSide[dir];
   S.lastSide[dir] = now;
-  if (S.cover && S.cover.side === dir){
-    /* A-scheme: 2nd same-dir swipe within 350 ms (incl. right after cover
-       entry, or a double-swipe while already in cover) -> lock-on shot */
+  /* v1.9 correction — THREE lanes (left edge / centre / right edge),
+     one-lane-shift rule: a side swipe moves the player ONE lane in
+     that direction, into the target lane's nearest cover (the stopped
+     search when stopped, the moving search otherwise). At the
+     outermost lane an outward swipe cannot shift, so it keeps the
+     classic in-lane behaviour: from cover it is the A-scheme (a 2nd
+     same-dir swipe within 350 ms fires; a single one hints), and out
+     of cover it re-enters the nearest cover on the current lane.
+     A swipe NEVER ends silently: it moves, shoots, or explains itself
+     (the v1.9 rule, kept). Shooting from a CENTRE cover works by the
+     same rule: a double swipe outward shifts one lane and the second
+     swipe fires from the new lane's cover (A-scheme at the boundary,
+     or a further shift — one swipe, one lane). */
+  var cur = playerLane();
+  var ti = laneIndex(cur) + (dir === 'left' ? -1 : 1);
+  if (S.cover && (ti < 0 || ti > 2)){
+    /* A-scheme: 2nd same-dir swipe within 350 ms (incl. right after
+       cover entry, or a double-swipe while already in cover) -> shot */
     if (now - last <= P.DOUBLE_MS){ shoot(dir); }
     else { showMsg('もう一度 ' + (dir==='left'?'←':'→') + ' で射撃', true, 500); }
     return;
   }
-  if (S.cover || S.lane){
-    if (dir !== (S.cover ? S.cover.side : S.lane)){
-      /* v1.2: swipe toward the centre -> leave the lane, back to centre */
-      leaveCover(); S.lane = null; S.mode = 'stop';
-      showMsg('中央レーンへ', true, 500);
-      return;
-    }
-    /* same side as the lane but not at an object (after a backstep /
-       step-back in the lane): re-enter cover at the nearest object.
-       v1.5: works from a full stop too (stopped search window); with
-       nothing in range the player stays and is told so. */
-    if (!S.cover){
-      var objL = (S.mode === 'stop') ? nearestCoverStopped(dir) : nearestCover(dir);
-      if (objL) enterCover(objL, dir, 'enter');
-      else if (S.mode === 'stop') showMsg('近くに物陰がない', true, 600);
-      return;
-    }
+  if (ti >= 0 && ti <= 2){
+    var target = LANE_ORDER[ti];
+    var objT = (S.mode === 'stop') ? nearestCoverStopped(target) : nearestCover(target);
+    if (objT){ enterCover(objT, target, 'enter'); return; }
+    if (!S.cover && !S.lane && S.mode === 'stop'){ showMsg('近くに物陰がない', true, 600); return; }
+    /* no cover in range on the target lane: step onto its lane line
+       (obj=null cover — the sidestep dodge, counts as cover) */
+    var tx = laneXOf(target);
+    S.cover = {side: target, obj: null};
+    S.lane = target; S.laneX = tx;
+    S.coverAnim = {path: [[tx, S.pz]], seg: 0, kind: 'enter'};
+    showMsg(laneName(target) + 'レーンへ', true, 500);
     return;
   }
-  /* v1.5: side swipes work in EVERY play state. From a full stop in the
-     centre lane the player steps into the nearest cover on that side
-     within |dz| <= 7 m (nearest ahead preferred, else nearest behind);
-     with nothing in range they stay put with a message — the old
-     "only while moving" gate read as input being blocked on device.
-     A second same-dir swipe inside the 350 ms window then fires from
-     that cover via the A-scheme branch above (cover + shot in one
-     double-swipe; with no lockable target shoot() just reports
-     NO TARGET and no round is fired). */
-  if (S.mode === 'stop'){
-    var objS = nearestCoverStopped(dir);
-    if (objS) enterCover(objS, dir, 'enter');
-    else showMsg('近くに物陰がない', true, 600);
-    return;
-  }
-  /* first swipe while moving: move to nearest cover on that side, immediately */
-  var obj = nearestCover(dir);
-  if (obj){
-    enterCover(obj, dir, 'enter');
-  } else {
-    /* no cover object in range: quick sidestep dodge (counts as cover) */
-    S.cover = {side: dir, obj: null};
-    S.lane = dir; S.laneX = (dir === 'left' ? 2.2 : -2.2);
-    S.coverAnim = {path: [[S.laneX, S.pz]], seg: 0, kind: 'enter'};
-  }
+  /* outward at the outermost lane, not in cover: re-enter the nearest
+     cover on the CURRENT lane (v1.5: works from a full stop too);
+     with nothing in range, say so in every mode — never silent */
+  var objC = (S.mode === 'stop') ? nearestCoverStopped(cur) : nearestCover(cur);
+  if (objC) enterCover(objC, cur, 'enter');
+  else showMsg('近くに物陰がない', true, 600);
 }
-function nearestCover(dir){
+function nearestCover(lane){
   var best = null, bestScore = 1e9;
   covers.forEach(function(c){
     if (c.flipAnim) return; // a car tumbling through the air is not cover
-    if (dir==='left' && c.cx <= 0) return;
-    if (dir==='right' && c.cx >= 0) return;
+    if (laneOfX(c.cx) !== lane) return;
     var dz = c.cz - S.pz;
     if (dz < -6 || dz > 18) return;
     var score = Math.abs(dz - 4);
@@ -1033,29 +1170,37 @@ function nearestCover(dir){
   });
   return best;
 }
-/* v1.5: cover search for a STOPPED player — same side, |dz| <= 7 m,
-   prefer the nearest object ahead, else the nearest behind. */
-function nearestCoverStopped(dir){
+/* v1.5: cover search for a STOPPED player — same side, |dz| <= window,
+   prefer the nearest object ahead, else the nearest behind.
+   v1.9: the window is P.STOP_COVER_M = 9 m (was a hard-coded 7 m). With
+   the old 7 m window and the old layout's ~21 m cover spacing on one
+   side, most stop positions were dead zones that answered
+   近くに物陰がない (or, in some states, nothing at all) even with a
+   cover in plain sight — the "stopped side swipe does nothing" report. */
+function nearestCoverStopped(lane){
   var ahead = null, aheadDz = 1e9, behind = null, behindDz = -1e9;
   covers.forEach(function(c){
     if (c.flipAnim) return;
-    if (dir==='left' && c.cx <= 0) return;
-    if (dir==='right' && c.cx >= 0) return;
+    if (laneOfX(c.cx) !== lane) return;
     var dz = c.cz - S.pz;
-    if (Math.abs(dz) > 7) return;
+    if (Math.abs(dz) > P.STOP_COVER_M) return;
     if (dz >= 0){ if (dz < aheadDz){ aheadDz = dz; ahead = c; } }
     else if (dz > behindDz){ behindDz = dz; behind = c; }
   });
   return ahead || behind;
 }
 function playerInCover(){ return !!S.cover && !S.coverAnim; }
-/* v1.2 lane protection rule: while the player is at a cover object or
-   transiting between covers on the same side, fire from the OPPOSITE side
-   of the street is blocked by the object row. Same-side fire can hit
-   normally, even in cover. */
+/* Lane protection rule (v1.2, generalised in the v1.9 correction):
+   while the player is at a cover object (or transiting between covers
+   on the same lane), fire from a NON-ADJACENT lane is blocked by the
+   cover rows in between — a left-edge enemy cannot hit a player in
+   right-edge cover and vice versa. Adjacent lanes (edge <-> centre,
+   and the same lane) can hit normally, even in cover: the centre lane
+   is adjacent to both, so it is exposed to both sides. */
 function shotBlockedByLane(e){
   if (!S.cover) return false;
-  return e.side !== S.cover.side;
+  var el = e.lane || laneOfX(e.baseX);
+  return Math.abs(laneIndex(S.cover.side) - laneIndex(el)) === 2;
 }
 
 /* ===== Shooting (player) ===== */
@@ -1181,7 +1326,14 @@ function damagePlayer(fromRocket){
 }
 
 /* ===== Enemy logic ===== */
-function enemyDuckX(e){ return e.baseX + (e.side==='left' ? 1.3 : -1.3); }
+function enemyDuckX(e){
+  /* centre-lane enemies duck across the open centre path (to just
+     inside the opposite FLANKING row, |x| = 1.75 vs covers at 2.2);
+     edge enemies duck behind their edge row, away from the street
+     centre (the v1.2/v1.9 behaviour) */
+  if (e.lane === 'centre') return e.baseX > 0 ? -1.75 : 1.75;
+  return e.baseX + (e.side==='left' ? 1.3 : -1.3);
+}
 function enemyUpdate(e, dt){
   if (!e.alive) return;
   var dz = e.z - S.pz;
@@ -1308,10 +1460,10 @@ function enemyUpdate(e, dt){
   e.sprite.material.rotation = (e.state === 'dodging') ? Math.sin(e.stateT * 30) * 0.10 : 0;
   if (e.pipSprite) e.pipSprite.visible = e.active && e.hp > 0;
 }
-/* runner relocation: another cover on the same side, 3–12 m away */
+/* runner relocation: another cover on the same lane, 3–12 m away */
 function runnerNextZ(e){
   var opts = covers.filter(function(c){
-    if (e.side === 'left' ? c.cx <= 0 : c.cx >= 0) return false;
+    if (laneOfX(c.cx) !== e.lane) return false;
     var d = Math.abs(c.cz - e.z);
     return d >= 3 && d <= 12;
   });
@@ -1323,7 +1475,7 @@ function runnerNextZ(e){
 function heavyNextZ(e){
   var best = null;
   covers.forEach(function(c){
-    if (e.side === 'left' ? c.cx <= 0 : c.cx >= 0) return;
+    if (laneOfX(c.cx) !== e.lane) return;
     if (c.cz < e.z - 3 && c.cz > S.pz + 6 && (best === null || c.cz > best)) best = c.cz;
   });
   return best;
@@ -1696,7 +1848,7 @@ var progress = freshProgress();
 var owned = [];                                        // item ids, in award order
 /* v1.8: the weapon slot has NO "none" state — every outfit already
    carries its own weapon, so the slot's resting state is the standard
-   entry ('standard' = 標準装備（衣装の武器）: the outfit's built-in
+   entry ('standard' = 標準装備：<outfit weapon> (v1.9 names the selected outfit's weapon): the outfit's built-in
    weapon with the plain lock-on shot, i.e. exactly v1.7's unequipped
    behaviour). Reward weapons replace it while equipped; unequipping
    one returns the slot to 'standard'. Armor and companion slots keep
@@ -1969,8 +2121,13 @@ function eqRow(slot, id){
     /* v1.8: the weapon slot's fixed default entry — the current
        outfit's own weapon (its art already carries it; performance is
        the plain lock-on shot). No item art: the weapon differs per
-       outfit, so the row is a labelled plate like the なし row. */
-    d.innerHTML = '<span class="eqmeta"><span class="eqname">標準装備（衣装の武器）</span><span class="eqdesc">いまの衣装の武器で戦う（標準のロックオン射撃）</span></span>' +
+       outfit, so the row is a labelled plate like the なし row.
+       v1.9: the equip screen is reached AFTER the outfit is chosen, so
+       the entry names the SELECTED outfit's actual weapon (OUTFITS
+       weaponName) instead of the generic 衣装の武器. buildEquipScreen
+       runs on every open, so the label always follows curOutfit. */
+    var wn = (OUTFITS[curOutfit] && OUTFITS[curOutfit].weaponName) || '衣装の武器';
+    d.innerHTML = '<span class="eqmeta"><span class="eqname">標準装備：' + wn + '</span><span class="eqdesc">いまの衣装の武器（' + wn + '）で戦う（標準のロックオン射撃）</span></span>' +
                   (equipped.weapon === DEFAULT_WEAPON ? '<span class="eqtag">装備中</span>' : '');
   } else {
     var it = ITEMS[id];
@@ -2091,7 +2248,7 @@ function loop(){
       if (lk >= 1){ S.laneAnim = null; updateHUD(); }
     } else if (!S.cover){
       if (S.mode === 'forward'){
-        var spd = (S.time < S.dashUntil && !S.lane) ? P.DASH_SPEED : P.WALK_SPEED; // dash: centre lane only
+        var spd = (S.time < S.dashUntil && dashLaneOk()) ? P.DASH_SPEED : P.WALK_SPEED; // dash: centre line only
         var fr = resolveCollision(S.px, S.pz + spd * dt); S.px = fr[0]; S.pz = fr[1];
       }
       else if (S.mode === 'back'){
@@ -2122,8 +2279,10 @@ function loop(){
         S.px = mr[0]; S.pz = mr[1];
       }
     } else if (!S.cover){
-      /* drift back toward the lane centre — or stay at the lane x in a lane */
-      var driftTo = S.lane ? S.laneX : 0;
+      /* drift back toward the lane centre — or stay at the lane x in a
+         lane; lane-less, drift to freeX (0 normally; 4.6 on the centre
+         lane's goal run, so the player steps around the last cover) */
+      var driftTo = S.lane ? S.laneX : (S.freeX || 0);
       var dr = resolveCollision(S.px + (driftTo - S.px) * Math.min(1, dt * 6), S.pz);
       S.px = dr[0]; S.pz = dr[1];
     }
@@ -2142,7 +2301,7 @@ function loop(){
     var transiting = !!S.coverAnim;
     var bsActive = !!S.backstepAnim, lnActive = !!S.laneAnim;
     var spdNow = bsActive || lnActive ? 0 :
-                 (S.mode === 'forward' && !S.cover) ? ((S.time < S.dashUntil && !S.lane) ? P.DASH_SPEED : P.WALK_SPEED) :
+                 (S.mode === 'forward' && !S.cover) ? ((S.time < S.dashUntil && dashLaneOk()) ? P.DASH_SPEED : P.WALK_SPEED) :
                  (S.mode === 'back' && !S.cover) ? P.BACK_SPEED : 0;
     /* v1.5: backstep and lane step-back are movement too — they show
        the ready frames (backward cycle) instead of the relaxed idle */
@@ -2243,17 +2402,21 @@ function loop(){
      v1.7: the rig follows the selected camera preset; the recon drone
      overrides it with a high look-down view of the course ahead. */
   if (droneOn){
-    camera.position.x += (S.px * 0.3 - camera.position.x) * Math.min(1, dt*3);
+    camera.position.x += (S.px * 0.25 - camera.position.x) * Math.min(1, dt*3);
     camera.position.y += (26 - camera.position.y) * Math.min(1, dt*3);
     camera.position.z += (S.pz + 4 - camera.position.z) * Math.min(1, dt*3);
-    camera.lookAt(S.px * 0.3, 0, S.pz + 30);
+    camera.lookAt(S.px * 0.25, 0, S.pz + 30);
   } else {
     var cp = CAM_PRESETS[settings.cam] || CAM_PRESETS.standard;
-    var camTX = S.px * 0.55 + cp.xOff, camTZ = S.pz - cp.back;
+    /* v1.9: follow factors softened (0.55 -> 0.42, lookAt 0.6 -> 0.45) so
+       a player on an edge lane (|x| = 6.9) stays framed with the street
+       still in view; at the old factors the edge lanes pushed the player
+       toward the frame edge. */
+    var camTX = S.px * 0.42 + cp.xOff, camTZ = S.pz - cp.back;
     camera.position.x += (camTX - camera.position.x) * Math.min(1, dt*5);
     camera.position.y += (cp.y - camera.position.y) * Math.min(1, dt*5);
     camera.position.z += (camTZ - camera.position.z) * Math.min(1, dt*7);
-    camera.lookAt(S.px * 0.6 + cp.xOff * 0.6, cp.lookY, S.pz + cp.lookAhead);
+    camera.lookAt(S.px * 0.45 + cp.xOff * 0.6, cp.lookY, S.pz + cp.lookAhead);
   }
   /* v1.7: enemy markers — visible in the drone view, and during the
      hawk's marking windows in normal play */
@@ -2270,7 +2433,7 @@ function loop(){
 /* debug/verification hook */
 window.RLA = {
   get state(){ return {phase:S.phase, mode:S.mode, px:S.px, pz:S.pz, cover:S.cover?S.cover.side:null,
-    dashing: S.time < S.dashUntil && S.mode==='forward' && !S.cover && !S.lane, backstepping: !!S.backstepAnim,
+    dashing: S.time < S.dashUntil && S.mode==='forward' && !S.cover && dashLaneOk(), backstepping: !!S.backstepAnim,
     inCover: playerInCover(), life:S.life, kills:S.kills, shots:S.shotsFired,
     outfit: S.outfit, sprite: spriteKeyNow(),
     /* v1.2 verification surface */
@@ -2280,7 +2443,7 @@ window.RLA = {
     flips: flipCount, rocketActive: rockets.length > 0,
     obstacles: obstacles.map(function(o){ return {x:o.cx, z:o.cz, hx:o.hx, hz:o.hz, rot:o.rot,
       kind:o.kind, type:o.type, cover:o.cover, flipped:o.flipped}; }),
-    enemies: enemies.map(function(e){return {kind:e.kind, side:e.side, z:e.z, alive:e.alive, active:e.active, state:e.state,
+    enemies: enemies.map(function(e){return {kind:e.kind, side:e.side, lane:e.lane, bx:e.baseX, z:e.z, alive:e.alive, active:e.active, state:e.state,
       hp:e.hp, maxHp:e.maxHp, tex:e.texKey, shotsFired:e.shotsFired, spriteH:e.sprite.scale.y};}),
     rocketSource: lastRocketKind,
     stageList: STAGES.map(function(s){ return {name:s.name, playable:s.playable}; }),
@@ -2313,8 +2476,23 @@ window.RLA = {
   teleport: function(z){ S.pz = z; },
   /* v1.2: place the player deterministically (clears cover/lane/anims) */
   setPos: function(x, z){
-    leaveCover(); S.lane = null; S.laneAnim = null; S.backstepAnim = null; S.mode = 'stop';
+    leaveCover(); S.lane = null; S.freeX = 0; S.laneAnim = null; S.backstepAnim = null; S.mode = 'stop';
     var r = resolveCollision(x, z); S.px = r[0]; S.pz = r[1];
+  },
+  /* v1.9: run the PRODUCTION cover searches from the current position
+     (used by the stop-position sweep regression: from-stop must always
+     find a cover on the new edge layout, and no swipe may end silently) */
+  coverSearch: function(dir, stopped){
+    var cur = playerLane();
+    var ti = laneIndex(cur) + (dir === 'left' ? -1 : 1);
+    var lane = (ti < 0 || ti > 2) ? cur : LANE_ORDER[ti];
+    var o = stopped ? nearestCoverStopped(lane) : nearestCover(lane);
+    return o ? { cz: o.cz, cx: o.cx, kind: o.kind } : null;
+  },
+  /* v1.9 correction: search one named lane directly (three-lane sweep) */
+  coverSearchLane: function(lane, stopped){
+    var o = stopped ? nearestCoverStopped(lane) : nearestCover(lane);
+    return o ? { cz: o.cz, cx: o.cx, kind: o.kind } : null;
   },
   /* v1.2: one movement step through the game's own collision resolve */
   debugMove: function(dx, dz){
